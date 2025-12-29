@@ -6,101 +6,114 @@
     <title>Solufuse Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    
     <style>
         body { background-color: #0f172a; color: #e2e8f0; font-family: 'Segoe UI', sans-serif; }
-        .card { background-color: #1e293b; transition: transform 0.2s, border-color 0.2s; }
-        .card:hover { transform: translateY(-5px); border-color: #3b82f6; }
-        .status-dot { height: 12px; width: 12px; border-radius: 50%; display: inline-block; }
-        .bg-green { background-color: #22c55e; box-shadow: 0 0 10px #22c55e; }
-        .bg-red { background-color: #ef4444; box-shadow: 0 0 10px #ef4444; }
-        .btn { transition: all 0.2s; }
+        .card { transition: all 0.3s ease; }
+        .card:hover { transform: translateY(-5px); }
+        .status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; }
+        .animate-fade-in { animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
-
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
 </head>
-<body class="flex flex-col items-center justify-center min-h-screen p-6">
+<body class="flex flex-col items-center justify-center min-h-screen p-4 md:p-8 bg-slate-900 selection:bg-orange-500 selection:text-white">
 
-    <div class="max-w-4xl w-full space-y-8">
+    <div class="max-w-6xl w-full space-y-10 animate-fade-in">
         
-        <div class="text-center space-y-2">
-            <h1 class="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600">
+        <div class="text-center space-y-4">
+            <h1 class="text-5xl md:text-6xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-500 to-orange-500 pb-2">
                 Solufuse Portal
             </h1>
-            <p class="text-slate-400 text-lg">Central Hub for Solufuse Ecosystem</p>
+            <p class="text-slate-400 text-lg md:text-xl">Central Hub for the Ecosystem</p>
             
-            <div id="api-status" class="mt-4 flex items-center justify-center gap-2 px-4 py-2 bg-slate-800 rounded-full inline-flex border border-slate-700 transition-colors duration-300">
-                <span id="status-dot" class="status-dot bg-gray-500"></span>
-                <span id="status-text" class="text-sm font-semibold text-gray-400">Checking API...</span>
+            <div id="api-status" class="inline-flex items-center gap-2 px-4 py-1.5 bg-slate-800/50 rounded-full border border-slate-700 transition-colors duration-300">
+                <span id="status-dot" class="status-dot bg-slate-500 shadow-slate-500/50"></span>
+                <span id="status-text" class="text-xs font-bold uppercase tracking-wider text-slate-400">Checking API...</span>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             
-            <a href="https://app.solufuse.com" target="_blank" class="card border border-slate-700 rounded-xl p-6 flex flex-col items-center text-center cursor-pointer group hover:bg-slate-800">
-                <div class="h-16 w-16 bg-blue-500/10 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-500/20">
+            <a href="https://app.solufuse.com" target="_blank" class="card group bg-slate-800/50 border border-slate-700 hover:border-blue-500 rounded-2xl p-6 flex flex-col items-center text-center cursor-pointer hover:bg-slate-800 hover:shadow-[0_0_20px_rgba(59,130,246,0.15)]">
+                <div class="h-16 w-16 bg-blue-500/10 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-blue-500/20 transition-colors">
                     <svg class="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
                 </div>
-                <h2 class="text-xl font-bold text-white mb-2">Frontend App</h2>
-                <p class="text-slate-400 text-sm">Access the user interface at app.solufuse.com</p>
+                <h2 class="text-lg font-bold text-white mb-1 group-hover:text-blue-400 transition-colors">Frontend App</h2>
+                <p class="text-slate-400 text-sm">Main user interface dashboard</p>
             </a>
 
-            <a href="https://api.solufuse.com/docs" target="_blank" class="card border border-slate-700 rounded-xl p-6 flex flex-col items-center text-center cursor-pointer group hover:bg-slate-800">
-                <div class="h-16 w-16 bg-purple-500/10 rounded-full flex items-center justify-center mb-4 group-hover:bg-purple-500/20">
+            <a href="https://files.solufuse.com/" target="_blank" class="card group bg-slate-800/50 border border-slate-700 hover:border-orange-500 rounded-2xl p-6 flex flex-col items-center text-center cursor-pointer hover:bg-slate-800 hover:shadow-[0_0_20px_rgba(249,115,22,0.15)]">
+                <div class="h-16 w-16 bg-orange-500/10 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-orange-500/20 transition-colors">
+                    <svg class="w-8 h-8 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z"></path></svg>
+                </div>
+                <h2 class="text-lg font-bold text-white mb-1 group-hover:text-orange-400 transition-colors">Solufuse Files</h2>
+                <p class="text-slate-400 text-sm">Secure file storage & sharing</p>
+            </a>
+
+            <a href="https://api.solufuse.com/docs" target="_blank" class="card group bg-slate-800/50 border border-slate-700 hover:border-purple-500 rounded-2xl p-6 flex flex-col items-center text-center cursor-pointer hover:bg-slate-800 hover:shadow-[0_0_20px_rgba(168,85,247,0.15)]">
+                <div class="h-16 w-16 bg-purple-500/10 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-purple-500/20 transition-colors">
                     <svg class="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
                 </div>
-                <h2 class="text-xl font-bold text-white mb-2">API Docs</h2>
-                <p class="text-slate-400 text-sm">Swagger UI & Redoc documentation</p>
+                <h2 class="text-lg font-bold text-white mb-1 group-hover:text-purple-400 transition-colors">API Docs</h2>
+                <p class="text-slate-400 text-sm">Swagger & Redoc reference</p>
             </a>
 
-            <a href="https://github.com/solufuse" target="_blank" class="card border border-slate-700 rounded-xl p-6 flex flex-col items-center text-center cursor-pointer group hover:bg-slate-800">
-                <div class="h-16 w-16 bg-gray-500/10 rounded-full flex items-center justify-center mb-4 group-hover:bg-gray-500/20">
+            <a href="https://github.com/solufuse" target="_blank" class="card group bg-slate-800/50 border border-slate-700 hover:border-gray-400 rounded-2xl p-6 flex flex-col items-center text-center cursor-pointer hover:bg-slate-800 hover:shadow-[0_0_20px_rgba(156,163,175,0.15)]">
+                <div class="h-16 w-16 bg-gray-500/10 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-gray-500/20 transition-colors">
                     <svg class="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
                 </div>
-                <h2 class="text-xl font-bold text-white mb-2">GitHub</h2>
-                <p class="text-slate-400 text-sm">Source code and repositories</p>
+                <h2 class="text-lg font-bold text-white mb-1 group-hover:text-gray-300 transition-colors">GitHub</h2>
+                <p class="text-slate-400 text-sm">Source code & Repos</p>
             </a>
         </div>
 
-        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-6 mt-8 backdrop-blur-sm">
-            <h3 class="text-xl font-bold text-white mb-4 border-b border-slate-700 pb-2">Developer Tools</h3>
+        <div class="bg-slate-800/30 border border-slate-700/50 rounded-2xl p-6 md:p-8 backdrop-blur-sm">
+            <h3 class="text-xl font-bold text-white mb-6 border-b border-slate-700 pb-4 flex items-center gap-2">
+                <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                Developer Zone
+            </h3>
             
-            <div id="login-section" class="text-center py-4">
-                <button onclick="loginWithGoogle()" class="btn bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-6 rounded-lg shadow-lg flex items-center mx-auto gap-2 transform active:scale-95">
+            <div id="login-section" class="text-center py-6">
+                <button onclick="loginWithGoogle()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-blue-500/30 flex items-center mx-auto gap-3 transform hover:scale-105 transition-all duration-200">
                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg>
                     Sign in with Google
                 </button>
-                <p class="text-slate-500 text-sm mt-2">Connect to reveal your UID and Token</p>
+                <p class="text-slate-500 text-sm mt-3">Authentication required for Token generation</p>
             </div>
 
-            <div id="user-info" class="hidden grid grid-cols-1 gap-4 animate-fade-in">
-                <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
-                    <div class="flex justify-between items-center mb-1">
-                        <label class="text-xs text-slate-400 uppercase font-bold">User UID</label>
-                        <button onclick="copyToClipboard('uid-display')" class="text-xs text-blue-400 hover:text-white transition-colors">Copy</button>
+            <div id="user-info" class="hidden grid grid-cols-1 gap-6 animate-fade-in">
+                <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-700 group hover:border-green-500/50 transition-colors">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="text-xs text-slate-400 uppercase font-bold tracking-wider">User UID</label>
+                        <button onclick="copyToClipboard('uid-display')" class="text-xs text-blue-400 hover:text-white transition-colors bg-blue-500/10 px-2 py-1 rounded">Copy</button>
                     </div>
-                    <code id="uid-display" class="block bg-black/30 p-2 rounded text-green-400 font-mono text-sm break-all select-all">...</code>
+                    <code id="uid-display" class="block bg-black/50 p-3 rounded-lg text-green-400 font-mono text-sm break-all select-all border border-slate-800">...</code>
                 </div>
 
-                <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
-                    <div class="flex justify-between items-center mb-1">
-                        <label class="text-xs text-slate-400 uppercase font-bold">JWT Token (Bearer)</label>
-                        <button onclick="copyToClipboard('token-display')" class="text-xs text-blue-400 hover:text-white transition-colors">Copy</button>
+                <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-700 group hover:border-orange-500/50 transition-colors">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="text-xs text-slate-400 uppercase font-bold tracking-wider">JWT Token (Bearer)</label>
+                        <button onclick="copyToClipboard('token-display')" class="text-xs text-blue-400 hover:text-white transition-colors bg-blue-500/10 px-2 py-1 rounded">Copy</button>
                     </div>
-                    <code id="token-display" class="block bg-black/30 p-2 rounded text-orange-400 font-mono text-xs break-all h-20 overflow-y-auto select-all scrollbar-thin scrollbar-thumb-slate-700">...</code>
+                    <code id="token-display" class="block bg-black/50 p-3 rounded-lg text-orange-400 font-mono text-xs break-all h-24 overflow-y-auto select-all scrollbar-thin scrollbar-thumb-slate-700 border border-slate-800">...</code>
                 </div>
 
-                <div class="flex justify-between mt-2 items-center">
+                <div class="flex justify-between mt-2 items-center px-2">
                     <div class="flex items-center gap-3">
-                        <img id="user-avatar" src="" alt="Avatar" class="w-8 h-8 rounded-full border border-slate-600">
-                        <span id="user-name" class="text-white font-medium"></span>
+                        <img id="user-avatar" src="" alt="Avatar" class="w-10 h-10 rounded-full border-2 border-slate-600">
+                        <div class="flex flex-col">
+                            <span id="user-name" class="text-white font-medium text-sm"></span>
+                            <span class="text-xs text-slate-500">Connected via Firebase</span>
+                        </div>
                     </div>
-                    <button onclick="logout()" class="text-red-400 text-sm hover:text-red-300 transition-colors">Logout</button>
+                    <button onclick="logout()" class="text-red-400 text-sm hover:text-white hover:bg-red-500/20 px-3 py-1 rounded-lg transition-all">Logout</button>
                 </div>
             </div>
         </div>
 
-        <div class="text-center text-slate-600 text-sm pt-8">
-            &copy; 2025 Solufuse. All systems operational.
+        <div class="text-center text-slate-600 text-sm pt-4 pb-8 border-t border-slate-800">
+            &copy; 2025 Solufuse Ecosystem. All systems operational.
         </div>
 
     </div>
@@ -109,35 +122,29 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-        // --- FIREBASE CONFIG (A REMPLIR) ---
-        // TODO: Mettre les vraies clés ici avant de déployer
         const firebaseConfig = {
-  apiKey: "AIzaSyAZ-Zi6fOKCH7duGgCnnHX_qB4TI5wTC5g",
-  authDomain: "solufuse-5647c.firebaseapp.com",
-  projectId: "solufuse-5647c",
-  storageBucket: "solufuse-5647c.firebasestorage.app",
-  messagingSenderId: "718299136180",
-  appId: "1:718299136180:web:fb893609b7f0283c55d7e1",
-  measurementId: "G-B1FVSFY4S2"
-};
+          apiKey: "AIzaSyAZ-Zi6fOKCH7duGgCnnHX_qB4TI5wTC5g",
+          authDomain: "solufuse-5647c.firebaseapp.com",
+          projectId: "solufuse-5647c",
+          storageBucket: "solufuse-5647c.firebasestorage.app",
+          messagingSenderId: "718299136180",
+          appId: "1:718299136180:web:fb893609b7f0283c55d7e1",
+          measurementId: "G-B1FVSFY4S2"
+        };
 
         let auth;
         try {
             const app = initializeApp(firebaseConfig);
             auth = getAuth(app);
-        } catch (e) {
-            console.warn("Firebase not configured properly.");
-        }
+        } catch (e) { console.warn("Firebase Error:", e); }
 
         window.loginWithGoogle = () => {
-            if (!auth) return alert("Firebase keys missing in code!");
+            if (!auth) return alert("Auth not initialized");
             const provider = new GoogleAuthProvider();
             signInWithPopup(auth, provider).catch(console.error);
         };
 
-        window.logout = () => {
-            if (auth) signOut(auth);
-        };
+        window.logout = () => { if (auth) signOut(auth); };
 
         if (auth) {
             onAuthStateChanged(auth, async (user) => {
@@ -163,8 +170,6 @@
     </script>
 
     <script>
-        // API STATUS CHECKER
-        // MODIFIE: Pointe vers l'URL externe de l'API (CORS doit être activé sur le backend)
         const API_URL = "https://api.solufuse.com/health"; 
 
         async function checkApiStatus() {
@@ -175,46 +180,27 @@
             try {
                 const res = await fetch(API_URL); 
                 if (res.ok) {
-                    dot.className = "status-dot bg-green";
-                    text.innerText = "API Live";
-                    text.classList.remove("text-gray-400", "text-red-400");
-                    text.classList.add("text-green-400");
-                    
-                    box.classList.remove("border-red-900", "bg-red-900/20", "border-slate-700");
-                    box.classList.add("border-green-900", "bg-green-900/20");
-                } else {
-                    throw new Error("Not OK");
-                }
+                    dot.className = "status-dot bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.6)]";
+                    text.innerText = "API ONLINE";
+                    text.className = "text-xs font-bold uppercase tracking-wider text-green-400";
+                    box.className = "inline-flex items-center gap-2 px-4 py-1.5 bg-green-500/10 rounded-full border border-green-500/30 transition-all duration-300";
+                } else { throw new Error(); }
             } catch (e) {
-                dot.className = "status-dot bg-red";
-                text.innerText = "API Offline";
-                text.classList.remove("text-gray-400", "text-green-400");
-                text.classList.add("text-red-400");
-                
-                box.classList.remove("border-green-900", "bg-green-900/20", "border-slate-700");
-                box.classList.add("border-red-900", "bg-red-900/20");
+                dot.className = "status-dot bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.6)]";
+                text.innerText = "API OFFLINE";
+                text.className = "text-xs font-bold uppercase tracking-wider text-red-400";
+                box.className = "inline-flex items-center gap-2 px-4 py-1.5 bg-red-500/10 rounded-full border border-red-500/30 transition-all duration-300";
             }
         }
 
         window.copyToClipboard = (id) => {
             const el = document.getElementById(id);
             navigator.clipboard.writeText(el.innerText);
-            // Petit feedback visuel rapide si on voulait
+            // Visual feedback could be added here
         };
 
         checkApiStatus();
-        setInterval(checkApiStatus, 60000); // Check every minute
+        setInterval(checkApiStatus, 60000); 
     </script>
-
-    <div style="text-align: center; margin: 40px 0; padding: 20px;">
-        <a href="https://files.solufuse.com/" target="_blank" 
-           style="background-color: #F7931A; color: white; padding: 15px 30px; 
-                  text-decoration: none; border-radius: 8px; font-family: sans-serif; 
-                  font-weight: bold; font-size: 1.1rem; box-shadow: 0 4px 10px rgba(247, 147, 26, 0.3);
-                  transition: transform 0.2s;">
-            📂 Accéder à Solufuse Files
-        </a>
-    </div>
-
 </body>
 </html>
