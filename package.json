@@ -1,13 +1,13 @@
 {
   "name": "solufuse-portal",
   "private": true,
-  "version": "2.0.1",
+  "version": "2.0.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "start": "serve dist -l 3000"
+    "start": "serve dist -l 80"
   },
   "devDependencies": {
     "typescript": "^5.2.2",
