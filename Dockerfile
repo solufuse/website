@@ -5,7 +5,8 @@ WORKDIR /app
 
 # Install dependencies
 COPY package*.json ./
-RUN npm ci
+# CHANGED: 'npm install' instead of 'npm ci' to handle missing lockfile
+RUN npm install
 
 # Copy source and build
 COPY . .
