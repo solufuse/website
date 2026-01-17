@@ -1,6 +1,16 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, ChevronsUpDown } from 'lucide-react';
+import { useProjectContext } from '@/context/ProjectContext';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+import CreateProjectDialog from './CreateProjectDialog';
 
 interface Conversation {
   id: string;
@@ -20,10 +30,32 @@ const Sidebar: React.FC<SidebarProps> = ({
   onNewConversation,
   onConversationSelect,
 }) => {
+  const { projects, currentProject, setCurrentProject } = useProjectContext();
+  const [isCreateProjectDialogOpen, setCreateProjectDialogOpen] = useState(false);
+
   return (
     <div className="flex flex-col h-full w-64 bg-background border-r">
       <div className="p-4">
-        <h1 className="text-xl font-bold mb-4">Solufuse</h1>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="w-full justify-between mb-4">
+              {currentProject ? currentProject.name : 'Select a project'}
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56">
+            {projects.map((project) => (
+              <DropdownMenuItem key={project.id} onSelect={() => setCurrentProject(project)}>
+                {project.name}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => setCreateProjectDialogOpen(true)}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              <span>Create Project</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button onClick={onNewConversation} className="w-full">
           <PlusCircle className="mr-2 h-4 w-4" /> New Chat
         </Button>
@@ -49,6 +81,10 @@ const Sidebar: React.FC<SidebarProps> = ({
           ))}
         </nav>
       </div>
+      <CreateProjectDialog
+        isOpen={isCreateProjectDialogOpen}
+        onClose={() => setCreateProjectDialogOpen(false)}
+      />
     </div>
   );
 };
