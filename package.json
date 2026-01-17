@@ -10,6 +10,7 @@
     "start": "serve dist -l 80"
   },
   "devDependencies": {
+    "@types/node": "^25.0.9",
     "autoprefixer": "^10.4.23",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.19",
