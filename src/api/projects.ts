@@ -1,3 +1,4 @@
+
 import { getAuthToken } from '@/api/getAuthToken';
 import type {
     PaginatedProjectSearchResponse,
@@ -17,21 +18,37 @@ const API_BASE_URL = 'https://api.solufuse.com/';
  * @throws An error if the response is not "ok".
  */
 async function handleResponse(response: Response) {
-    if (!response.ok) {
-        let errorData;
-        try {
-            errorData = await response.json();
-        } catch (e) {
-            // No JSON body in the error response
+    if (response.ok) {
+        // Handle successful responses, including those with no content
+        if (response.status === 204) {
+            return;
         }
-        const errorMessage = errorData?.detail || `API Error: ${response.status} ${response.statusText}`;
+        return response.json();
+    } else {
+        // Handle server-side errors
+        let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+        try {
+            const errorData = await response.json();
+            // Attempt to stringify a complex error object, otherwise use the 'detail' field
+            if (errorData) {
+                if (typeof errorData === 'object' && errorData !== null) {
+                    // FastAPI validation errors are often in `detail` which can be an array of objects
+                    if (errorData.detail && Array.isArray(errorData.detail)) {
+                        errorMessage = errorData.detail.map((e: any) => `${e.loc.join(' -> ')} - ${e.msg}`).join('\n');
+                    } else if (errorData.detail) {
+                        errorMessage = errorData.detail;
+                    } else {
+                        errorMessage = JSON.stringify(errorData);
+                    }
+                } else {
+                    errorMessage = errorData;
+                }
+            }
+        } catch (e) {
+            // The response was not a valid JSON, so we stick with the status text
+        }
         throw new Error(errorMessage);
     }
-    // Handle responses without content (e.g., DELETE)
-    if (response.status === 204) {
-        return;
-    }
-    return response.json();
 }
 
 // --- API FUNCTIONS ---
