@@ -6,7 +6,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Send, Settings } from 'lucide-react';
 import { signInWithGoogle, signOutFromGoogle, onAuthStateChange } from '@/modules/auth';
 import { User } from 'firebase/auth';
-import Header from '@/components/layout/Header';
 import ModelSelector from '@/components/chat/ModelSelector';
 import Sidebar from '@/components/layout/Sidebar';
 
@@ -78,9 +77,10 @@ const App: React.FC = () => {
                 activeConversationId={activeConversationId}
                 onNewConversation={handleNewConversation}
                 onConversationSelect={handleConversationSelect}
+                user={user}
+                onSignOut={signOutFromGoogle}
             />
             <div className="flex flex-col flex-1">
-                <Header user={user} onSignOut={signOutFromGoogle} />
                 <main className="flex-1 overflow-y-auto p-4">
                     <Card className="w-full max-w-4xl mx-auto">
                         <CardHeader className="flex flex-row items-center justify-between">
