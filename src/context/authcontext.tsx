@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
-import { auth } from '@/firebase';
+import { auth } from '@/lib/firebase';
 import { UserProfile } from '@/types';
 
 // Create a new, consolidated user type

@@ -1,4 +1,4 @@
-import { auth } from '../firebase';
+import { auth } from '@/lib/firebase';
 
 // Function to get a fresh auth token
 export const getAuthToken = async () => {
