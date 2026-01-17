@@ -1,15 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Send } from 'lucide-react';
+import { signInWithGoogle, signOutFromGoogle, onAuthStateChange } from '@/modules/auth';
+import { User } from 'firebase/auth';
+import Header from '@/components/layout/Header';
 
 const App: React.FC = () => {
+    const [user, setUser] = useState<User | null>(null);
     const [messages, setMessages] = useState<{ sender: string, text: string }[]>([]);
     const [input, setInput] = useState('');
     const [model, setModel] = useState('gemini');
+
+    useEffect(() => {
+        const unsubscribe = onAuthStateChange(setUser);
+        return () => unsubscribe();
+    }, []);
 
     const handleSend = () => {
         if (input.trim()) {
@@ -23,12 +32,18 @@ const App: React.FC = () => {
       setModel(value);
     };
 
+    if (!user) {
+        return (
+            <div className="flex flex-col items-center justify-center h-screen bg-background text-foreground">
+                <h1 className="text-3xl font-bold mb-8">Solufuse</h1>
+                <Button onClick={signInWithGoogle}>Sign in with Google</Button>
+            </div>
+        );
+    }
+
     return (
         <div className="flex flex-col h-screen bg-background text-foreground">
-            <header className="flex items-center justify-between p-4 border-b">
-                <h1 className="text-xl font-bold">Solufuse</h1>
-                {/* Placeholder for other header content if needed */}
-            </header>
+            <Header user={user} onSignOut={signOutFromGoogle} />
             <main className="flex-1 overflow-y-auto p-4">
                 <Card className="w-full max-w-4xl mx-auto">
                     <CardHeader className="flex flex-row items-center justify-between">
@@ -62,7 +77,7 @@ const App: React.FC = () => {
                                 </div>
                                 {message.sender === 'You' && (
                                     <Avatar>
-                                        <AvatarFallback>You</AvatarFallback>
+                                        <AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback>
                                     </Avatar>
                                 )}
                             </div>
