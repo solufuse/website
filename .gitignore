@@ -5,6 +5,9 @@
 /dist
 /build
 
+#private
+/api
+
 # Environment variables
 .env
 .env.local

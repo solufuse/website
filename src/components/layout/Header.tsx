@@ -1,27 +1,28 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User } from 'firebase/auth';
+import { AuthenticatedUser } from '@/context/authcontext'; // Import the new user type
 import ModelSelector from '@/components/chat/ModelSelector';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { signInWithGoogle, signOutFromGoogle } from '@/modules/auth';
 
 interface HeaderProps {
-    user: User | null;
+    user: AuthenticatedUser | null;
     model: string;
     onModelChange: (model: string) => void;
     onToggleSettings: () => void;
+    onLogin: () => void; // Add a prop for the login action
+    onLogout: () => void; // Add a prop for the logout action
 }
 
-const Header: React.FC<HeaderProps> = ({ user, model, onModelChange, onToggleSettings }) => {
+const Header: React.FC<HeaderProps> = ({ user, model, onModelChange, onToggleSettings, onLogin, onLogout }) => {
     return (
         <header className="flex items-center justify-between p-4 border-b">
             <ModelSelector model={model} onModelChange={onModelChange} />
             {user ? (
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="w-full justify-start">
-                            <Avatar className="h-8 w-8 mr-2">
+                         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                            <Avatar className="h-8 w-8">
                                 <AvatarImage src={user.photoURL || undefined} alt={user.displayName || undefined} />
                                 <AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback>
                             </Avatar>
@@ -38,11 +39,13 @@ const Header: React.FC<HeaderProps> = ({ user, model, onModelChange, onToggleSet
                         <DropdownMenuItem>Profile</DropdownMenuItem>
                         <DropdownMenuItem onClick={onToggleSettings}>Settings</DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={signOutFromGoogle}>Sign out</DropdownMenuItem>
+                        {/* Use the onLogout prop for the sign out action */}
+                        <DropdownMenuItem onClick={onLogout}>Sign out</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             ) : (
-                    <Button onClick={signInWithGoogle} className="w-full">
+                // Use the onLogin prop for the sign in action
+                <Button onClick={onLogin}>
                     Sign in with Google
                 </Button>
             )}

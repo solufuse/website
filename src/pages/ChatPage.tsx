@@ -3,12 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Send, Bot } from 'lucide-react';
-import { onAuthStateChange, signInWithGoogle } from '@/modules/auth';
-import { User } from 'firebase/auth';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { sendMessage } from '@/services/chatService';
 import SettingsDialog from '@/components/chat/SettingsDialog';
+import { useAuthContext } from '@/context/authcontext'; // Import the auth context
 
 interface Conversation {
   id: string;
@@ -16,8 +15,10 @@ interface Conversation {
   messages: { sender: string; text: string }[];
 }
 
-const App: React.FC = () => {
-    const [user, setUser] = useState<User | null>(null);
+const ChatPage: React.FC = () => {
+    // Get user and auth functions from the context
+    const { user, loading: authLoading, loginWithGoogle, logout } = useAuthContext();
+
     const [input, setInput] = useState('');
     const [model, setModel] = useState('gemini');
     const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -34,11 +35,6 @@ const App: React.FC = () => {
         scrollToBottom()
     }, [conversations, activeConversationId]);
 
-    useEffect(() => {
-        const unsubscribe = onAuthStateChange(setUser);
-        return () => unsubscribe();
-    }, []);
-
     const handleNewConversation = () => {
         if(user){
             const newConversation: Conversation = {
@@ -48,8 +44,9 @@ const App: React.FC = () => {
             };
             setConversations([...conversations, newConversation]);
             setActiveConversationId(newConversation.id);
-        }else{
-            signInWithGoogle();
+        } else {
+            // If user is not logged in, prompt them to log in
+            loginWithGoogle();
         }
     };
 
@@ -102,6 +99,14 @@ const App: React.FC = () => {
         }
     };
     
+    if (authLoading) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center">
+                <p>Loading...</p>
+            </div>
+        );
+    }
+
     const activeConversation = conversations.find(c => c.id === activeConversationId);
     const messages = activeConversation ? activeConversation.messages : [];
 
@@ -114,13 +119,22 @@ const App: React.FC = () => {
                 onConversationSelect={handleConversationSelect}
             />
             <div className="flex flex-col flex-1">
-                <Header user={user} model={model} onModelChange={setModel} onToggleSettings={() => setIsSettingsOpen(true)} />
+                {/* Pass the authenticated user to the Header */}
+                <Header 
+                    user={user} 
+                    model={model} 
+                    onModelChange={setModel} 
+                    onToggleSettings={() => setIsSettingsOpen(true)}
+                    onLogin={loginWithGoogle}
+                    onLogout={logout}
+                />
                 <main className="flex-1 overflow-y-auto p-4">
                     <div className="max-w-4xl mx-auto h-full">
                         {!activeConversationId ? (
                              <div className="flex flex-col items-center justify-center h-full">
                                 <Bot size={72} />
                                 <p className="text-2xl mt-4">How can I help you today?</p>
+                                {!user && <p className='mt-2'>Please sign in to start a new chat.</p>}
                             </div>
                         ) : (
                             <div className="flex flex-col h-full">
@@ -139,6 +153,7 @@ const App: React.FC = () => {
                                             </div>
                                             {message.sender === 'You' && (
                                                 <Avatar>
+                                                     {/* Use the display name from the context user */}
                                                     <AvatarFallback>{user?.displayName?.charAt(0)}</AvatarFallback>
                                                 </Avatar>
                                             )}
@@ -188,4 +203,4 @@ const App: React.FC = () => {
     );
 };
 
-export default App;
+export default ChatPage;

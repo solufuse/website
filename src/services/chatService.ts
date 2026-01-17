@@ -1,31 +1,19 @@
-import axios from 'axios';
-
-const API_ENDPOINTS = {
-    gemini: 'YOUR_GEMINI_API_ENDPOINT',
-    chatgpt: 'YOUR_CHATGPT_API_ENDPOINT',
-    claude: 'YOUR_CLAUDE_API_ENDPOINT',
-};
+import { askGemini } from '@/api/gemini';
 
 export const sendMessage = async (model: string, message: string): Promise<{ text: string }> => {
-   const endpoint = API_ENDPOINTS[model as keyof typeof API_ENDPOINTS];
-   
-   // Mock response for Gemini
+   // For now, we only support the gemini model.
    if (model === 'gemini') {
-    return new Promise(resolve => {
-      setTimeout(() => {
-        resolve({
-          text: `This is a mocked response for your message: "${message}"`
-        });
-      }, 1000);
-    });
-  }
+        // Retrieve the API key from local storage.
+        const apiKey = localStorage.getItem('gemini_api_key');
+        if (!apiKey) {
+            throw new Error("API key for Gemini not found. Please go to Settings to add it.");
+        }
 
-   // This is a placeholder. You'll need to replace this with the actual API call logic for each service.
-   try {
-       const response = await axios.post(endpoint, { message });
-       return response.data;
-   } catch (error) {
-       console.error(`Error sending message to ${model}:`, error);
-       throw error;
+        const responseText = await askGemini({ apiKey, question: message });
+        return { text: responseText };
    }
+   
+   // In a real-world scenario, you might have different services for different models.
+   // For now, we'll throw an error for unsupported models.
+   throw new Error(`Model ${model} is not supported yet.`);
 };
