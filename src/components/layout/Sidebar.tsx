@@ -1,9 +1,6 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from 'lucide-react';
-import { User } from 'firebase/auth';
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface Conversation {
   id: string;
@@ -15,8 +12,6 @@ interface SidebarProps {
   activeConversationId: string | null;
   onNewConversation: () => void;
   onConversationSelect: (id: string) => void;
-  user: User;
-  onSignOut: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -24,8 +19,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   activeConversationId,
   onNewConversation,
   onConversationSelect,
-  user,
-  onSignOut
 }) => {
   return (
     <div className="flex flex-col h-full w-64 bg-background border-r">
@@ -55,35 +48,6 @@ const Sidebar: React.FC<SidebarProps> = ({
             </a>
           ))}
         </nav>
-      </div>
-      <div className="p-4 border-t">
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="w-full justify-start">
-                    <Avatar className="h-8 w-8 mr-2">
-                        <AvatarImage src={user.photoURL || undefined} alt={user.displayName || undefined} />
-                        <AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex flex-col items-start">
-                        <p className="text-sm font-medium leading-none">{user.displayName}</p>
-                        <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
-                    </div>
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">{user.displayName}</p>
-                        <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
-                    </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>Profile</DropdownMenuItem>
-                <DropdownMenuItem>Settings</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onSignOut}>Sign out</DropdownMenuItem>
-            </DropdownMenuContent>
-        </DropdownMenu>
       </div>
     </div>
   );
