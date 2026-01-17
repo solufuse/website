@@ -9,6 +9,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import CreateProjectDialog from './CreateProjectDialog';
 
@@ -35,6 +39,11 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <div className="flex flex-col h-full w-64 bg-background border-r">
+      <div className="p-4 border-b">
+        <h2 className="text-lg font-semibold tracking-tight">
+          Solufuse
+        </h2>
+      </div>
       <div className="p-4">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -45,9 +54,28 @@ const Sidebar: React.FC<SidebarProps> = ({
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56">
             {projects.map((project) => (
-              <DropdownMenuItem key={project.id} onSelect={() => setCurrentProject(project)}>
-                {project.name}
-              </DropdownMenuItem>
+               <DropdownMenuSub key={project.id}>
+                 <DropdownMenuSubTrigger>
+                  <span>{project.name}</span>
+                 </DropdownMenuSubTrigger>
+                 <DropdownMenuSubContent>
+                  <DropdownMenuItem onSelect={() => setCurrentProject(project)}>
+                    Select Project
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem>
+                    Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    Members
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Description</DropdownMenuLabel>
+                  <p className="px-2 py-1.5 text-sm text-muted-foreground">
+                    {project.description || 'No description'}
+                  </p>
+                 </DropdownMenuSubContent>
+               </DropdownMenuSub>
             ))}
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={() => setCreateProjectDialogOpen(true)}>
