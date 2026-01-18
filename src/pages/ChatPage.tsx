@@ -10,6 +10,7 @@ import SettingsDialog from '@/components/chat/SettingsDialog';
 import { useAuthContext } from '@/context/authcontext';
 import { createChat, getChats, postMessage } from '@/api/chat';
 import { listProjects, getProjectDetails } from '@/api/projects';
+import { getApiKey } from '@/utils/apiKeyManager'; // Import the new function
 import type { Chat, Message } from '@/types/types_chat';
 import type { ProjectListDetail, ProjectDetail } from '@/types/types_projects';
 
@@ -55,9 +56,10 @@ const ChatPage: React.FC = () => {
 
     const handleNewConversation = async () => {
         if (user && selectedProjectId) {
-            const apiKey = localStorage.getItem('gemini_api_key');
+            const apiKey = getApiKey(); // Use the getter to check for the key
             if (!apiKey) {
                 alert('Please add your API key in the settings.');
+                setIsSettingsOpen(true); // Open settings automatically
                 return;
             }
             const newChat = await createChat(selectedProjectId, { title: `New Chat ${chats.length + 1}`, api_key: apiKey });
@@ -153,7 +155,7 @@ const ChatPage: React.FC = () => {
                     onToggleSettings={() => setIsSettingsOpen(true)}
                     onLogin={loginWithGoogle}
                     onLogout={logout}
-                    currentProject={currentProject} // Pass the current project to the header
+                    currentProject={currentProject}
                 />
                 <main className="flex-1 overflow-y-auto p-4">
                     <div className="max-w-4xl mx-auto h-full">

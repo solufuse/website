@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -9,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { setApiKey, getApiKey } from '@/modules/apiKey';
+import { getApiKey, saveApiKey } from '@/utils/apiKeyManager'; // Import the new functions
 
 interface SettingsDialogProps {
   isOpen: boolean;
@@ -17,16 +18,26 @@ interface SettingsDialogProps {
 }
 
 const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose }) => {
-  const [apiKeyInput, setApiKeyInput] = useState(getApiKey() || '');
+  const [apiKeyInput, setApiKeyInput] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      const storedKey = getApiKey(); // Use the getter to load the key
+      if (storedKey) {
+        setApiKeyInput(storedKey);
+      }
+    }
+  }, [isOpen]);
 
   const handleSave = () => {
-    setApiKey(apiKeyInput);
+    saveApiKey(apiKeyInput); // Use the setter to save the key
+    alert('API Key saved!');
     onClose();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
@@ -34,20 +45,19 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose }) => {
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <label htmlFor="api-key" className="text-right">
-              Gemini API Key
-            </label>
-            <Input
-              id="api-key"
-              value={apiKeyInput}
-              onChange={(e) => setApiKeyInput(e.target.value)}
-              className="col-span-3"
-              placeholder="Enter your API key"
-            />
-          </div>
+          <label htmlFor="api-key" className="text-sm font-medium">
+            Gemini API Key
+          </label>
+          <Input
+            id="api-key"
+            value={apiKeyInput}
+            onChange={(e) => setApiKeyInput(e.target.value)}
+            placeholder="Enter your API key"
+            type="password"
+          />
         </div>
         <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="submit" onClick={handleSave}>Save changes</Button>
         </DialogFooter>
       </DialogContent>
@@ -56,3 +66,4 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose }) => {
 };
 
 export default SettingsDialog;
+
