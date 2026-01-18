@@ -27,6 +27,7 @@ interface Conversation {
 interface SidebarProps {
   conversations: Conversation[];
   activeConversationId: string | null;
+  isCreatingChat: boolean; // Add prop to handle loading state
   onNewConversation: () => void;
   onConversationSelect: (id: string) => void;
   projects: ProjectListDetail[];
@@ -49,6 +50,7 @@ const roleVariantMap: Record<string, "default" | "secondary" | "destructive" | "
 const Sidebar: React.FC<SidebarProps> = ({
   conversations,
   activeConversationId,
+  isCreatingChat,
   onNewConversation,
   onConversationSelect,
   projects,
@@ -109,8 +111,8 @@ const Sidebar: React.FC<SidebarProps> = ({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button onClick={onNewConversation} className="w-full">
-          <PlusCircle className="mr-2 h-4 w-4" /> New Chat
+        <Button onClick={onNewConversation} disabled={isCreatingChat} className="w-full">
+          {isCreatingChat ? 'Creating...' : <><PlusCircle className="mr-2 h-4 w-4" /> New Chat</>}
         </Button>
       </div>
       <div className="px-4">

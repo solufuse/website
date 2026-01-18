@@ -25,6 +25,7 @@ export interface CreateChatRequest {
 
 export interface PostMessageRequest {
     content: string;
+    role?: 'user' | 'assistant' | 'system';
 }
 
 export interface DeleteMessageRequest {

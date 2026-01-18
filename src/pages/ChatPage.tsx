@@ -10,7 +10,7 @@ import SettingsDialog from '@/components/chat/SettingsDialog';
 import { useAuthContext } from '@/context/authcontext';
 import { createChat, getChats, postMessage } from '@/api/chat';
 import { listProjects, getProjectDetails } from '@/api/projects';
-import { getApiKey } from '@/utils/apiKeyManager'; // Import the new function
+import { getApiKey } from '@/utils/apiKeyManager';
 import type { Chat, Message } from '@/types/types_chat';
 import type { ProjectListDetail, ProjectDetail } from '@/types/types_projects';
 
@@ -22,6 +22,7 @@ const ChatPage: React.FC = () => {
     const [chats, setChats] = useState<Chat[]>([]);
     const [activeChatId, setActiveChatId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [isCreatingChat, setIsCreatingChat] = useState(false); // New state for chat creation
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     
     const [projects, setProjects] = useState<ProjectListDetail[]>([]);
@@ -55,20 +56,32 @@ const ChatPage: React.FC = () => {
     }, [user, selectedProjectId]);
 
     const handleNewConversation = async () => {
-        if (user && selectedProjectId) {
-            const apiKey = getApiKey(); // Use the getter to check for the key
-            if (!apiKey) {
-                alert('Please add your API key in the settings.');
-                setIsSettingsOpen(true); // Open settings automatically
-                return;
-            }
+        if (!user) {
+            loginWithGoogle();
+            return;
+        }
+        if (!selectedProjectId) {
+            alert("Please select a project before starting a new chat.");
+            return;
+        }
+
+        const apiKey = getApiKey();
+        if (!apiKey) {
+            alert('Please add your API key in the settings.');
+            setIsSettingsOpen(true);
+            return;
+        }
+
+        setIsCreatingChat(true); // Start loading
+        try {
             const newChat = await createChat(selectedProjectId, { title: `New Chat ${chats.length + 1}`, api_key: apiKey });
             setChats([...chats, newChat]);
             setActiveChatId(newChat.short_id);
-        } else if (!user) {
-            loginWithGoogle();
-        } else {
-            alert("Please select a project before starting a new chat.")
+        } catch (error) {
+            console.error("Failed to create chat:", error);
+            alert("Sorry, we couldn't create a new chat. Please try again later.");
+        } finally {
+            setIsCreatingChat(false); // End loading
         }
     };
 
@@ -97,7 +110,7 @@ const ChatPage: React.FC = () => {
             setIsLoading(true);
 
             try {
-                const aiResponse = await postMessage(activeChatId, { content: userInput });
+                const aiResponse = await postMessage(activeChatId, { content: userInput, role: 'user' });
                 const aiMessage: Message = { content: aiResponse.content, role: 'assistant' };
 
                 const updatedChatsWithAiMessage = updatedChatsWithUserMessage.map(chat => {
@@ -141,6 +154,7 @@ const ChatPage: React.FC = () => {
             <Sidebar
                 conversations={chats.map(c => ({ id: c.short_id, name: c.title }))}
                 activeConversationId={activeChatId}
+                isCreatingChat={isCreatingChat} // Pass loading state
                 onNewConversation={handleNewConversation}
                 onConversationSelect={handleConversationSelect}
                 projects={projects}
