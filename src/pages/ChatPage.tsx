@@ -22,7 +22,7 @@ const ChatPage: React.FC = () => {
     const [chats, setChats] = useState<Chat[]>([]);
     const [activeChatId, setActiveChatId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [isCreatingChat, setIsCreatingChat] = useState(false); // New state for chat creation
+    const [isCreatingChat, setIsCreatingChat] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     
     const [projects, setProjects] = useState<ProjectListDetail[]>([]);
@@ -72,16 +72,25 @@ const ChatPage: React.FC = () => {
             return;
         }
 
-        setIsCreatingChat(true); // Start loading
+        setIsCreatingChat(true);
         try {
-            const newChat = await createChat(selectedProjectId, { title: `New Chat ${chats.length + 1}`, api_key: apiKey });
+            const newChatNumber = chats.reduce((max, chat) => {
+                if (chat.title.startsWith('New Chat ')) {
+                    const num = parseInt(chat.title.replace('New Chat ', ''), 10);
+                    return isNaN(num) ? max : Math.max(max, num);
+                }
+                return max;
+            }, 0) + 1;
+            const newChatTitle = `New Chat ${newChatNumber}`;
+
+            const newChat = await createChat(selectedProjectId, { title: newChatTitle, api_key: apiKey });
             setChats([...chats, newChat]);
             setActiveChatId(newChat.short_id);
         } catch (error) {
             console.error("Failed to create chat:", error);
             alert("Sorry, we couldn't create a new chat. Please try again later.");
         } finally {
-            setIsCreatingChat(false); // End loading
+            setIsCreatingChat(false);
         }
     };
 
@@ -154,7 +163,7 @@ const ChatPage: React.FC = () => {
             <Sidebar
                 conversations={chats.map(c => ({ id: c.short_id, name: c.title }))}
                 activeConversationId={activeChatId}
-                isCreatingChat={isCreatingChat} // Pass loading state
+                isCreatingChat={isCreatingChat}
                 onNewConversation={handleNewConversation}
                 onConversationSelect={handleConversationSelect}
                 projects={projects}
