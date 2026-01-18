@@ -1,47 +1,36 @@
+
 import React, { createContext, useState, useContext, ReactNode, useMemo, useEffect, useCallback } from 'react';
 import {
-    ProjectSearchResult,
+    ProjectListDetail, // Use the lightweight version for the main list
+    ProjectDetail,       // Use the detailed version for the current project
     ProjectCreatePayload,
     MemberInvitePayload,
-    ProjectMember,
-    Pagination
+    ProjectRoleEnum, // <-- IMPORT ENUM
 } from '@/types/types_projects';
-import { ProjectRole } from '@/types/types_roles';
 import {
-    searchProjects,
+    getProjectDetails,
     createProject,
     deleteProject,
     inviteOrUpdateMember,
     kickMember,
     listProjects
 } from '@/api/projects';
-import { FileTreeNode } from '@/utils/fileTree';
 import { useAuthContext } from './authcontext';
 
 // --- CONTEXT SHAPE ---
 interface ProjectContextType {
-  projects: ProjectSearchResult[];
-  pagination: Pagination | null;
+  projects: ProjectListDetail[];          
+  currentProject: ProjectDetail | null;   
   isLoading: boolean;
   error: string | null;
-  fetchProjects: (params?: { q?: string; id?: string }) => Promise<void>;
   refreshProjects: () => void;
   addProject: (payload: ProjectCreatePayload) => Promise<void>;
   removeProject: (projectId: string) => Promise<void>;
-  currentProject: ProjectSearchResult | null;
-  setCurrentProject: (project: ProjectSearchResult | null) => void;
-  getProjectById: (projectId: string) => ProjectSearchResult | undefined;
-  members: ProjectMember[];
-  isMembersLoading: boolean;
-  inviteMember: (projectId: string, payload: MemberInvitePayload) => Promise<void>;
-  removeMember: (projectId: string, targetUid: string) => Promise<void>;
-  updateMemberRole: (projectId: string, targetUid: string, role: ProjectRole) => Promise<void>;
-  currentDiagramFile: string | null;
-  setCurrentDiagramFile: (path: string | null) => void;
-  refreshDiagramResults: () => void;
-  diagramResultRefreshKey: number;
-  projectTree: FileTreeNode | null;
-  setProjectTree: (tree: FileTreeNode | null) => void;
+  setCurrentProjectById: (projectId: string | null) => void; 
+  inviteMember: (payload: MemberInvitePayload) => Promise<void>;
+  removeMember: (targetUid: string) => Promise<void>;
+  // UPDATED to use ProjectRoleEnum
+  updateMemberRole: (targetUid: string, role: ProjectRoleEnum) => Promise<void>; 
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -50,146 +39,126 @@ const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user, loading: authIsLoading } = useAuthContext();
 
-  const [projects, setProjects] = useState<ProjectSearchResult[]>([]);
-  const [currentProject, setCurrentProjectState] = useState<ProjectSearchResult | null>(null);
-  const [pagination, setPagination] = useState<Pagination | null>(null);
+  const [projects, setProjects] = useState<ProjectListDetail[]>([]);
+  const [currentProject, setCurrentProject] = useState<ProjectDetail | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
- const fetchProjects = useCallback(async (params: { q?: string; id?: string } = {}) => {
-    if (authIsLoading) return;
+  const fetchProjects = useCallback(async () => {
+    if (authIsLoading || !user) return;
     setIsLoading(true);
     setError(null);
     try {
-        let response;
-        // If there's a search query or an ID, use the detailed search endpoint
-        if (params.q || params.id) {
-            response = await searchProjects(params);
-        } else {
-            // Otherwise, use the lightweight list endpoint
-            response = await listProjects();
-        }
-        // The ProjectSearchResult and ProjectListResult are compatible for this context
-        setProjects(response.projects as ProjectSearchResult[]);
-        setPagination(response.pagination);
+        const response = await listProjects();
+        setProjects(response.projects);
     } catch (err: any) {
         setError(err.message);
-        if (!user) {
-            setProjects([]);
-            setPagination(null);
-        }
+        setProjects([]);
+        setCurrentProject(null);
     }
     setIsLoading(false);
-}, [user, authIsLoading]);
+  }, [user, authIsLoading]);
 
+  const refreshProjects = useCallback(() => { fetchProjects(); }, [fetchProjects]);
 
-  const refreshProjects = useCallback(() => { fetchProjects({}); }, [fetchProjects]);
+  const setCurrentProjectById = useCallback(async (projectId: string | null) => {
+    if (!projectId) {
+        setCurrentProject(null);
+        localStorage.removeItem('lastProjectId');
+        return;
+    }
 
-  const addProject = useCallback(async (payload: ProjectCreatePayload) => {
+    if (currentProject?.id === projectId) return;
+
+    setIsLoading(true);
+    try {
+        const projectDetails = await getProjectDetails(projectId);
+        setCurrentProject(projectDetails);
+        localStorage.setItem('lastProjectId', projectId);
+    } catch (err: any) {
+        setError(`Failed to load project: ${err.message}`);
+        setCurrentProject(null);
+        localStorage.removeItem('lastProjectId');
+    }
+    setIsLoading(false);
+  }, [currentProject?.id]);
+
+  const addProject = async (payload: ProjectCreatePayload) => {
     await createProject(payload);
     refreshProjects();
-  }, [refreshProjects]);
+  };
 
-  const getProjectById = useCallback((projectId: string) => projects.find(p => p.id === projectId), [projects]);
-
-  const setCurrentProject = useCallback((project: ProjectSearchResult | null) => {
-    setCurrentProjectState(project);
-    if (project) {
-      localStorage.setItem('lastProjectId', project.id);
-    } else {
-      localStorage.removeItem('lastProjectId');
-    }
-    setCurrentDiagramFile(null);
-    setProjectTree(null);
-  }, []);
-
-  const removeProject = useCallback(async (projectId: string) => {
+  const removeProject = async (projectId: string) => {
     await deleteProject(projectId);
-    setProjects(prev => prev.filter(p => p.id !== projectId));
     if (currentProject?.id === projectId) {
-      const newCurrent = projects.length > 1 ? projects.find(p => p.id !== projectId) || null : null;
-      setCurrentProject(newCurrent);
+        setCurrentProjectById(null);
     }
-  }, [projects, currentProject, setCurrentProject]);
-
-  // --- MEMBER MANAGEMENT (OPTIMISTIC UPDATES) ---
-
-  const inviteMember = async (projectId: string, payload: MemberInvitePayload) => {
-    await inviteOrUpdateMember(projectId, payload);
-    // Refresh the entire project to get user details (email, etc.)
-    const updatedProjectData = await searchProjects({ id: projectId });
-    if (updatedProjectData.projects.length > 0) {
-        setCurrentProjectState(updatedProjectData.projects[0]);
-        setProjects(p => p.map(proj => proj.id === projectId ? updatedProjectData.projects[0] : proj));
-    }
+    refreshProjects();
   };
 
-  const removeMember = async (projectId: string, targetUid: string) => {
-    await kickMember(projectId, targetUid);
-    setCurrentProjectState(prev => {
-        if (!prev || prev.id !== projectId) return prev;
+  const inviteMember = async (payload: MemberInvitePayload) => {
+    if (!currentProject) return;
+    await inviteOrUpdateMember(currentProject.id, payload);
+    await setCurrentProjectById(currentProject.id);
+  };
+
+  const removeMember = async (targetUid: string) => {
+    if (!currentProject) return;
+    await kickMember(currentProject.id, targetUid);
+    setCurrentProject(prev => prev ? { ...prev, members: prev.members.filter(m => m.uid !== targetUid) } : null);
+  };
+
+  // UPDATED to use ProjectRoleEnum
+  const updateMemberRole = async (targetUid: string, role: ProjectRoleEnum) => {
+    if (!currentProject) return;
+    // The payload now correctly uses the enum
+    await inviteOrUpdateMember(currentProject.id, { user_id: targetUid, role });
+    // Optimistic update
+     setCurrentProject(prev => {
+        if (!prev) return null;
         return {
             ...prev,
-            members: prev.members.filter(m => m.user_uid !== targetUid)
+            members: prev.members.map(m => m.uid === targetUid ? { ...m, project_role: role } : m)
         };
     });
   };
-
-  const updateMemberRole = async (projectId: string, targetUid: string, role: ProjectRole) => {
-    await inviteOrUpdateMember(projectId, { user_id: targetUid, role });
-     setCurrentProjectState(prev => {
-        if (!prev || prev.id !== projectId) return prev;
-        return {
-            ...prev,
-            members: prev.members.map(m => m.user_uid === targetUid ? { ...m, project_role: role } : m)
-        };
-    });
-  };
-  
-  // --- OTHER STATES ---
-  const [currentDiagramFile, setCurrentDiagramFile] = useState<string | null>(null);
-  const [diagramResultRefreshKey, setDiagramResultRefreshKey] = useState<number>(0);
-  const [projectTree, setProjectTree] = useState<FileTreeNode | null>(null);
-  const refreshDiagramResults = () => setDiagramResultRefreshKey(k => k + 1);
-
-  // --- SIDE EFFECTS ---
 
   useEffect(() => {
     if (user && !authIsLoading) {
-        fetchProjects({});
+        fetchProjects();
     }
   }, [user, authIsLoading, fetchProjects]);
 
   useEffect(() => {
     if (projects.length > 0 && !currentProject) {
       const lastId = localStorage.getItem('lastProjectId');
-      const projectToSelect = lastId ? getProjectById(lastId) : projects[0];
-      if (projectToSelect) {
-          setCurrentProject(projectToSelect);
+      if (lastId && projects.some(p => p.id === lastId)) {
+          setCurrentProjectById(lastId);
       }
     }
-  }, [projects, currentProject, getProjectById, setCurrentProject]);
-
-  const members = useMemo(() => currentProject?.members || [], [currentProject]);
-  const isMembersLoading = useMemo(() => isLoading && !!currentProject, [isLoading, currentProject]);
+  }, [projects, currentProject, setCurrentProjectById]);
 
   const value = useMemo(() => ({ 
-    projects, pagination, isLoading, error,
-    fetchProjects, refreshProjects, addProject, removeProject,
-    currentProject, setCurrentProject, getProjectById,
-    members, isMembersLoading, inviteMember, removeMember, updateMemberRole,
-    currentDiagramFile, setCurrentDiagramFile, refreshDiagramResults, diagramResultRefreshKey, projectTree, setProjectTree,
+    projects,
+    currentProject,
+    isLoading,
+    error,
+    refreshProjects,
+    addProject,
+    removeProject,
+    setCurrentProjectById,
+    inviteMember,
+    removeMember,
+    updateMemberRole
   }), [
-    projects, pagination, isLoading, error, members, isMembersLoading,
-    currentProject, diagramResultRefreshKey, projectTree, currentDiagramFile, 
-    fetchProjects, refreshProjects, addProject, removeProject,
-    setCurrentProject, getProjectById, inviteMember, removeMember, updateMemberRole
+    projects, currentProject, isLoading, error,
+    refreshProjects, addProject, removeProject, setCurrentProjectById, 
+    inviteMember, removeMember, updateMemberRole
   ]);
 
   return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
 };
 
-// --- ACCESS HOOK ---
 export const useProjectContext = () => {
   const context = useContext(ProjectContext);
   if (context === undefined) throw new Error('useProjectContext must be used within a ProjectProvider');

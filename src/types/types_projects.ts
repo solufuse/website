@@ -1,112 +1,75 @@
-// src/types/types_projects.ts
 
-import type { GlobalRole, ProjectRole } from './types_roles';
+// Defines types and enums related to Projects, aligning with backend schemas.
 
-// --- CORE PROJECT & PAGINATION TYPES ---
-
-/**
- * Defines the structure for pagination data.
- */
-export interface Pagination {
-    total_items: number;
-    total_pages: number;
-    current_page: number;
-    limit: number;
+// UPDATED: This enum now matches the Pydantic schema with TitleCase values.
+export enum ProjectRoleEnum {
+    VIEWER = "Viewer",
+    EDITOR = "Editor",
+    MODERATOR = "Moderator",
+    ADMIN = "Admin",
+    OWNER = "Owner",
 }
 
-/**
- * Represents a project member, as returned by the API.
- */
 export interface ProjectMember {
-    user_uid: string;
-    project_role: ProjectRole;
-    email?: string | null;
-    avatar_url?: string | null;
+    uid: string;
+    // UPDATED: Username can be null, matching the backend's Optional[str].
+    username: string | null;
+    project_role: string; // Using string is safer if backend roles change.
+    global_role?: string | null;
+    avatar_url?: string;
 }
 
-/**
- * Represents a project in search results, including its members.
- */
-export interface ProjectSearchResult {
+export interface ProjectDetail {
     id: string;
     name: string;
-    description?: string | null;
-    role: ProjectRole; // The current user's role in this project
+    // UPDATED: Description can be null.
+    description: string | null;
+    created_at: string; // ISO 8601 date string
+    owner_uid: string;
     members: ProjectMember[];
 }
 
-/**
-* Lightweight project information for list views.
-*/
-export interface ProjectListResult {
-   id: string;
-   name: string;
-   description?: string | null;
-   role: ProjectRole;
-}
-
-/**
- * Summary of a project a user is a member of (used in profiles).
- */
-export interface ProjectSummary {
+export interface ProjectListDetail {
     id: string;
-    role: ProjectRole;
+    name: string;
+    // UPDATED: Description can be null.
+    description: string | null;
+    user_project_role: string;
+    user_global_role: string;
 }
 
-// --- API RESPONSE WRAPPERS ---
-
-/**
- * Wrapper for paginated project search results.
- */
-export interface PaginatedProjectSearchResponse {
-    projects: ProjectSearchResult[];
-    pagination: Pagination;
-}
-
-/**
-* Wrapper for paginated project list results.
-*/
 export interface PaginatedProjectListResponse {
-   projects: ProjectListResult[];
-   pagination: Pagination;
+    projects: ProjectListDetail[];
+    pagination: {
+        total: number;
+    };
 }
 
+// --- Payloads for API Requests ---
 
-// --- API PAYLOADS ---
-
-/**
- * Payload for creating a new project.
- */
 export interface ProjectCreatePayload {
     id: string;
     name: string;
-    description?: string;
+    description: string | null;
 }
 
-/**
- * Payload for inviting or updating a member.
- */
 export interface MemberInvitePayload {
-    email?: string;
     user_id?: string;
-    role: ProjectRole;
+    email?: string;
+    // UPDATED: The role now correctly uses the updated enum.
+    role: ProjectRoleEnum;
 }
 
-// --- LEGACY / DEPRECATED TYPES ---
-
-export interface ProjectLegacy {
+// Kept for potential future use or legacy search components
+export interface ProjectSearchResult {
     id: string;
     name: string;
-    owner_uid: string;
-    role: ProjectRole | 'guest';
-    is_public: boolean;
+    description: string | null;
+    role: string; 
+    members: ProjectMember[];
 }
 
-export interface MemberLegacy {
-    uid: string;
-    email: string;
-    role: ProjectRole;
-    photoURL?: string;
-    username?: string;
-    global_role?: GlobalRole;
+export interface PaginatedProjectSearchResponse {
+    projects: ProjectSearchResult[];
+    pagination: any;
 }

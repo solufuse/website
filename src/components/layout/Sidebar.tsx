@@ -15,10 +15,9 @@ import {
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import CreateProjectDialog from './CreateProjectDialog';
-import ManageMembersDialog from './ManageMembersDialog'; // Import the new dialog
+import ManageMembersDialog from './ManageMembersDialog'; 
 import { useAuthContext } from '@/context/authcontext';
 import { Badge } from "@/components/ui/badge";
-import { GlobalRole, ProjectRole } from "@/types/types_roles";
 
 interface Conversation {
   id: string;
@@ -32,16 +31,16 @@ interface SidebarProps {
   onConversationSelect: (id: string) => void;
 }
 
-const roleVariantMap: Record<GlobalRole | ProjectRole, "default" | "secondary" | "destructive" | "outline"> = {
+const roleVariantMap: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     "super_admin": "destructive",
     "admin": "destructive",
     "moderator": "secondary",
     "nitro": "default",
     "user": "outline",
     "guest": "outline",
-    "owner": "default",
-    "editor": "secondary",
-    "viewer": "outline",
+    "Owner": "default",
+    "Editor": "secondary",
+    "Viewer": "outline",
 };
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -50,12 +49,12 @@ const Sidebar: React.FC<SidebarProps> = ({
   onNewConversation,
   onConversationSelect,
 }) => {
-  const { projects, currentProject, setCurrentProject } = useProjectContext();
+  const { projects, currentProject, setCurrentProjectById } = useProjectContext();
   const { user } = useAuthContext();
   const [isCreateProjectDialogOpen, setCreateProjectDialogOpen] = useState(false);
-  const [isManageMembersDialogOpen, setManageMembersDialogOpen] = useState(false); // State for the new dialog
+  const [isManageMembersDialogOpen, setManageMembersDialogOpen] = useState(false);
 
-  const projectRole = currentProject?.role;
+  const currentUserProjectRole = currentProject?.members.find(m => m.uid === user?.uid)?.project_role;
   const globalRole = user?.global_role;
 
   return (
@@ -80,7 +79,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   <span>{project.name}</span>
                  </DropdownMenuSubTrigger>
                  <DropdownMenuSubContent>
-                  <DropdownMenuItem onSelect={() => setCurrentProject(project)}>
+                  <DropdownMenuItem onSelect={() => setCurrentProjectById(project.id)}>
                     Select Project
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -113,8 +112,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         <div className="text-xs font-semibold text-muted-foreground px-1">ROLES</div>
         <div className="flex flex-wrap gap-1 mt-2">
             {globalRole && <Badge variant={roleVariantMap[globalRole] || 'outline'}>{globalRole}</Badge>}
-            {projectRole && <Badge variant={roleVariantMap[projectRole] || 'outline'}>{projectRole}</Badge>}
-            {(!globalRole && !projectRole && user) && <Badge variant={'outline'}>user</Badge>}
+            {currentUserProjectRole && <Badge variant={roleVariantMap[currentUserProjectRole] || 'outline'}>{currentUserProjectRole}</Badge>}
+            {(!globalRole && !currentUserProjectRole && user) && <Badge variant={'outline'}>user</Badge>}
         </div>
       </div>
       <div className="flex-1 overflow-y-auto mt-4">
@@ -143,7 +142,6 @@ const Sidebar: React.FC<SidebarProps> = ({
       <ManageMembersDialog 
         isOpen={isManageMembersDialogOpen} 
         onClose={() => setManageMembersDialogOpen(false)} 
-        project={currentProject}
       />
     </div>
   );

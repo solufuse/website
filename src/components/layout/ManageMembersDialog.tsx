@@ -15,38 +15,41 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Project } from '@/types';
-import { ProjectRole } from '@/types/types_roles';
+import { useProjectContext } from '@/context/ProjectContext';
+import { ProjectRoleEnum } from '@/types/types_projects';
 
 interface ManageMembersDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  project: Project | null;
 }
 
-const ManageMembersDialog: React.FC<ManageMembersDialogProps> = ({ isOpen, onClose, project }) => {
-  if (!project) return null;
+const ManageMembersDialog: React.FC<ManageMembersDialogProps> = ({ isOpen, onClose }) => {
+  const { currentProject, inviteMember, removeMember, updateMemberRole } = useProjectContext();
+
+  if (!currentProject) return null;
 
   const handleInvite = () => {
-    // TODO: Implement invite functionality
-    console.log('Invite new member');
+    const email = prompt("Enter email of the user to invite:");
+    if (email) {
+      inviteMember({ email, role: ProjectRoleEnum.VIEWER });
+    }
   };
 
-  const handleChangeRole = (userId: string, newRole: ProjectRole) => {
-    // TODO: Implement role change functionality
-    console.log(`Change role for user ${userId} to ${newRole}`);
+  const handleChangeRole = (userId: string, newRole: ProjectRoleEnum) => {
+    updateMemberRole(userId, newRole);
   };
 
   const handleKickMember = (userId: string) => {
-    // TODO: Implement kick member functionality
-    console.log(`Kick member ${userId}`);
+    if (window.confirm("Are you sure you want to kick this member?")) {
+      removeMember(userId);
+    }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Manage Members for {project.name}</DialogTitle>
+          <DialogTitle>Manage Members for {currentProject.name}</DialogTitle>
           <DialogDescription>
             Invite, remove, and manage roles for project members.
           </DialogDescription>
@@ -54,15 +57,15 @@ const ManageMembersDialog: React.FC<ManageMembersDialogProps> = ({ isOpen, onClo
         <div className="space-y-4">
           <Button onClick={handleInvite}>Invite Member</Button>
           <div className="space-y-2">
-            {project.members?.map((member) => (
-              <div key={member.user_uid} className="flex items-center justify-between">
+            {currentProject.members?.map((member) => (
+              <div key={member.uid} className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <Avatar>
                     <AvatarImage src={member.avatar_url || undefined} />
-                    <AvatarFallback>{member.email?.charAt(0) || member.user_uid.charAt(0)}</AvatarFallback>
+                    <AvatarFallback>{member.username?.charAt(0) || 'U'}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="font-semibold">{member.email || member.user_uid}</p>
+                    <p className="font-semibold">{member.username || member.uid}</p>
                     <p className="text-sm text-muted-foreground">{member.project_role}</p>
                   </div>
                 </div>
@@ -71,13 +74,13 @@ const ManageMembersDialog: React.FC<ManageMembersDialogProps> = ({ isOpen, onClo
                     <Button variant="ghost">...</Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <DropdownMenuItem onSelect={() => handleChangeRole(member.user_uid, 'editor')}>
+                    <DropdownMenuItem onSelect={() => handleChangeRole(member.uid, ProjectRoleEnum.EDITOR)}>
                       Make Editor
                     </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleChangeRole(member.user_uid, 'viewer')}>
+                    <DropdownMenuItem onSelect={() => handleChangeRole(member.uid, ProjectRoleEnum.VIEWER)}>
                       Make Viewer
                     </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleKickMember(member.user_uid)}>
+                    <DropdownMenuItem onSelect={() => handleKickMember(member.uid)}>
                       Kick Member
                     </DropdownMenuItem>
                   </DropdownMenuContent>

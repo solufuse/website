@@ -1,10 +1,10 @@
 
 import { getAuthToken } from '@/api/getAuthToken';
 import type {
-    PaginatedProjectSearchResponse,
+    PaginatedProjectListResponse,
     ProjectCreatePayload,
     MemberInvitePayload,
-    PaginatedProjectListResponse
+    ProjectDetail
 } from '@/types/types_projects';
 
 const API_BASE_URL = 'https://api.solufuse.com/';
@@ -19,20 +19,16 @@ const API_BASE_URL = 'https://api.solufuse.com/';
  */
 async function handleResponse(response: Response) {
     if (response.ok) {
-        // Handle successful responses, including those with no content
         if (response.status === 204) {
             return;
         }
         return response.json();
     } else {
-        // Handle server-side errors
         let errorMessage = `API Error: ${response.status} ${response.statusText}`;
         try {
             const errorData = await response.json();
-            // Attempt to stringify a complex error object, otherwise use the 'detail' field
             if (errorData) {
                 if (typeof errorData === 'object' && errorData !== null) {
-                    // FastAPI validation errors are often in `detail` which can be an array of objects
                     if (errorData.detail && Array.isArray(errorData.detail)) {
                         errorMessage = errorData.detail.map((e: any) => `${e.loc.join(' -> ')} - ${e.msg}`).join('\n');
                     } else if (errorData.detail) {
@@ -66,23 +62,17 @@ export const listProjects = async (): Promise<PaginatedProjectListResponse> => {
     return handleResponse(response);
 };
 
-
 /**
- * Searches for projects by name (q) or exact ID (id).
- * If no parameters are provided, it lists all projects accessible to the user.
- * @param params An object containing 'q' or 'id'.
- * @returns A promise that resolves with the paginated project response.
+ * Gets the detailed information for a single project.
+ * @param projectId The ID of the project to retrieve.
+ * @returns A promise that resolves with the project details.
  */
-export const searchProjects = async (params: { q?: string; id?: string }): Promise<PaginatedProjectSearchResponse> => {
+export const getProjectDetails = async (projectId: string): Promise<ProjectDetail> => {
     const token = await getAuthToken();
     const headers: HeadersInit = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const queryParams = new URLSearchParams();
-    if (params.q) queryParams.append('q', params.q);
-    if (params.id) queryParams.append('id', params.id);
-
-    const response = await fetch(`${API_BASE_URL}/projects/search?${queryParams.toString()}`, { headers });
+    const response = await fetch(`${API_BASE_URL}/projects/${projectId}`, { headers });
     return handleResponse(response);
 };
 

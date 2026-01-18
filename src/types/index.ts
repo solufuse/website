@@ -11,7 +11,6 @@ export type { ProjectSearchResult as Project } from './types_projects'; // Alias
 
 // [+] Import types needed for declarations within this file's scope, to fix resolution errors.
 import type { GlobalRole } from './types_roles';
-import type { ProjectSummary } from './types_projects';
 
 // --- API ACTION PAYLOADS (USER-SPECIFIC) ---
 
@@ -60,7 +59,7 @@ export interface UserProfile extends UserPublic {
     first_name?: string;
     last_name?: string;
     birth_date?: string; // ISO 8601 date string (YYYY-MM-DD)
-    projects: ProjectSummary[]; // This now correctly references the imported type
+    projects: any[]; // This now correctly references the imported type
 }
 
 // Admin-level view of a user's profile
