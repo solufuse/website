@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { PlusCircle, ChevronsUpDown } from 'lucide-react';
-import { useProjectContext } from '@/context/ProjectContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +17,7 @@ import CreateProjectDialog from './CreateProjectDialog';
 import ManageMembersDialog from './ManageMembersDialog'; 
 import { useAuthContext } from '@/context/authcontext';
 import { Badge } from "@/components/ui/badge";
+import type { ProjectDetail, ProjectListDetail } from '@/types/types_projects';
 
 interface Conversation {
   id: string;
@@ -29,6 +29,9 @@ interface SidebarProps {
   activeConversationId: string | null;
   onNewConversation: () => void;
   onConversationSelect: (id: string) => void;
+  projects: ProjectListDetail[];
+  currentProject: ProjectDetail | null;
+  onProjectSelect: (id: string) => void;
 }
 
 const roleVariantMap: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -48,8 +51,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   activeConversationId,
   onNewConversation,
   onConversationSelect,
+  projects,
+  currentProject,
+  onProjectSelect,
 }) => {
-  const { projects, currentProject, setCurrentProjectById } = useProjectContext();
   const { user } = useAuthContext();
   const [isCreateProjectDialogOpen, setCreateProjectDialogOpen] = useState(false);
   const [isManageMembersDialogOpen, setManageMembersDialogOpen] = useState(false);
@@ -79,7 +84,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   <span>{project.name}</span>
                  </DropdownMenuSubTrigger>
                  <DropdownMenuSubContent>
-                  <DropdownMenuItem onSelect={() => setCurrentProjectById(project.id)}>
+                  <DropdownMenuItem onSelect={() => onProjectSelect(project.id)}>
                     Select Project
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />

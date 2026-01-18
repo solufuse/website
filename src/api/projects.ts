@@ -6,46 +6,9 @@ import type {
     MemberInvitePayload,
     ProjectDetail
 } from '@/types/types_projects';
+import { handleResponse } from '@/utils/handleResponse';
 
 const API_BASE_URL = 'https://api.solufuse.com/';
-
-// --- HELPER FUNCTIONS ---
-
-/**
- * Handles the response from fetch calls.
- * @param response The Response object from the API.
- * @returns The JSON response.
- * @throws An error if the response is not "ok".
- */
-async function handleResponse(response: Response) {
-    if (response.ok) {
-        if (response.status === 204) {
-            return;
-        }
-        return response.json();
-    } else {
-        let errorMessage = `API Error: ${response.status} ${response.statusText}`;
-        try {
-            const errorData = await response.json();
-            if (errorData) {
-                if (typeof errorData === 'object' && errorData !== null) {
-                    if (errorData.detail && Array.isArray(errorData.detail)) {
-                        errorMessage = errorData.detail.map((e: any) => `${e.loc.join(' -> ')} - ${e.msg}`).join('\n');
-                    } else if (errorData.detail) {
-                        errorMessage = errorData.detail;
-                    } else {
-                        errorMessage = JSON.stringify(errorData);
-                    }
-                } else {
-                    errorMessage = errorData;
-                }
-            }
-        } catch (e) {
-            // The response was not a valid JSON, so we stick with the status text
-        }
-        throw new Error(errorMessage);
-    }
-}
 
 // --- API FUNCTIONS ---
 
