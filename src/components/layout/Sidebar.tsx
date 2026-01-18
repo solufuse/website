@@ -55,7 +55,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [isCreateProjectDialogOpen, setCreateProjectDialogOpen] = useState(false);
   const [isManageMembersDialogOpen, setManageMembersDialogOpen] = useState(false); // State for the new dialog
 
-  const projectRole = currentProject?.members?.find(member => member.user_uid === user?.uid)?.project_role;
+  const projectRole = currentProject?.role;
   const globalRole = user?.global_role;
 
   return (
