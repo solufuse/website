@@ -47,6 +47,9 @@ const ChatPage: React.FC = () => {
         if (user && selectedProjectId) {
             getProjectDetails(selectedProjectId).then(setCurrentProject);
             getChats(selectedProjectId).then(setChats);
+        } else {
+            setCurrentProject(null);
+            setChats([]);
         }
     }, [user, selectedProjectId]);
 
@@ -60,8 +63,10 @@ const ChatPage: React.FC = () => {
             const newChat = await createChat(selectedProjectId, { title: `New Chat ${chats.length + 1}`, api_key: apiKey });
             setChats([...chats, newChat]);
             setActiveChatId(newChat.short_id);
-        } else {
+        } else if (!user) {
             loginWithGoogle();
+        } else {
+            alert("Please select a project before starting a new chat.")
         }
     };
 
@@ -148,6 +153,7 @@ const ChatPage: React.FC = () => {
                     onToggleSettings={() => setIsSettingsOpen(true)}
                     onLogin={loginWithGoogle}
                     onLogout={logout}
+                    currentProject={currentProject} // Pass the current project to the header
                 />
                 <main className="flex-1 overflow-y-auto p-4">
                     <div className="max-w-4xl mx-auto h-full">
