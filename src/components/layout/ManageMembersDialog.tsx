@@ -21,6 +21,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useProjectContext } from '@/context/ProjectContext';
 import { ProjectRoleEnum, ProjectMember } from '@/types/types_projects';
 import { lookupUser } from '@/api/users';
+import { Badge } from '@/components/ui/badge';
+import { roleVariantMap } from '@/lib/utils';
 
 type DetailedProjectMember = ProjectMember & { email?: string };
 
@@ -42,7 +44,6 @@ const ManageMembersDialog: React.FC<ManageMembersDialogProps> = ({ isOpen, onClo
           currentProject.members.map(async (member) => {
             try {
               const userProfile: { email?: string; username?: string | null } = await lookupUser({ uid: member.uid });
-              // CORRECTED: Changed user.username to userProfile.username
               return { ...member, email: userProfile.email, username: userProfile.username || member.username };
             } catch (error) {
               console.error(`Failed to lookup user ${member.uid}`, error);
@@ -111,31 +112,36 @@ const ManageMembersDialog: React.FC<ManageMembersDialogProps> = ({ isOpen, onClo
                       <p className="text-xs text-muted-foreground">UID: {member.uid}</p>
                     </div>
                   </div>
-                  {!isOwner(member.uid) && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">...</Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuSub>
-                          <DropdownMenuSubTrigger>Change Role</DropdownMenuSubTrigger>
-                          <DropdownMenuContent>
-                            {Object.values(ProjectRoleEnum)
-                              .filter(role => role !== member.project_role && role !== ProjectRoleEnum.OWNER)
-                              .map(role => (
-                                <DropdownMenuItem key={role} onSelect={() => handleChangeRole(member.uid, role)}>
-                                  Set as {role}
-                                </DropdownMenuItem>
-                              ))}
-                          </DropdownMenuContent>
-                        </DropdownMenuSub>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-red-500" onSelect={() => handleKickMember(member.uid)}>
-                          Kick Member
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
+                  <div className="flex items-center space-x-2">
+                    <Badge variant={roleVariantMap[member.project_role] || 'outline'}>
+                      {member.project_role}
+                    </Badge>
+                    {!isOwner(member.uid) && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">...</Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>Change Role</DropdownMenuSubTrigger>
+                            <DropdownMenuContent>
+                              {Object.values(ProjectRoleEnum)
+                                .filter(role => role !== member.project_role && role !== ProjectRoleEnum.OWNER)
+                                .map(role => (
+                                  <DropdownMenuItem key={role} onSelect={() => handleChangeRole(member.uid, role)}>
+                                    Set as {role}
+                                  </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                          </DropdownMenuSub>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-red-500" onSelect={() => handleKickMember(member.uid)}>
+                            Kick Member
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
                 </div>
               ))
             )}
