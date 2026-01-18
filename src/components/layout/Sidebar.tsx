@@ -15,6 +15,9 @@ import {
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import CreateProjectDialog from './CreateProjectDialog';
+import { useAuthContext } from '@/context/authcontext';
+import { Badge } from "@/components/ui/badge";
+import { GlobalRole, ProjectRole } from "@/types/types_roles";
 
 interface Conversation {
   id: string;
@@ -28,6 +31,18 @@ interface SidebarProps {
   onConversationSelect: (id: string) => void;
 }
 
+const roleVariantMap: Record<GlobalRole | ProjectRole, "default" | "secondary" | "destructive" | "outline"> = {
+    "super_admin": "destructive",
+    "admin": "destructive",
+    "moderator": "secondary",
+    "nitro": "default",
+    "user": "outline",
+    "guest": "outline",
+    "owner": "default",
+    "editor": "secondary",
+    "viewer": "outline",
+};
+
 const Sidebar: React.FC<SidebarProps> = ({
   conversations,
   activeConversationId,
@@ -35,7 +50,11 @@ const Sidebar: React.FC<SidebarProps> = ({
   onConversationSelect,
 }) => {
   const { projects, currentProject, setCurrentProject } = useProjectContext();
+  const { user } = useAuthContext();
   const [isCreateProjectDialogOpen, setCreateProjectDialogOpen] = useState(false);
+
+  const projectRole = currentProject?.members.find(member => member.user_uid === user?.uid)?.project_role;
+  const globalRole = user?.global_role;
 
   return (
     <div className="flex flex-col h-full w-64 bg-background border-r">
@@ -88,7 +107,15 @@ const Sidebar: React.FC<SidebarProps> = ({
           <PlusCircle className="mr-2 h-4 w-4" /> New Chat
         </Button>
       </div>
-      <div className="flex-1 overflow-y-auto">
+      <div className="px-4">
+        <div className="text-xs font-semibold text-muted-foreground px-1">ROLES</div>
+        <div className="flex flex-wrap gap-1 mt-2">
+            {globalRole && <Badge variant={roleVariantMap[globalRole] || 'outline'}>{globalRole}</Badge>}
+            {projectRole && <Badge variant={roleVariantMap[projectRole] || 'outline'}>{projectRole}</Badge>}
+            {(!globalRole && !projectRole && user) && <Badge variant={'outline'}>user</Badge>}
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto mt-4">
         <nav className="px-2">
           {conversations.map((conversation) => (
             <a
