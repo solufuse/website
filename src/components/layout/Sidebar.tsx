@@ -15,6 +15,7 @@ import {
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import CreateProjectDialog from './CreateProjectDialog';
+import ManageMembersDialog from './ManageMembersDialog'; // Import the new dialog
 import { useAuthContext } from '@/context/authcontext';
 import { Badge } from "@/components/ui/badge";
 import { GlobalRole, ProjectRole } from "@/types/types_roles";
@@ -52,6 +53,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const { projects, currentProject, setCurrentProject } = useProjectContext();
   const { user } = useAuthContext();
   const [isCreateProjectDialogOpen, setCreateProjectDialogOpen] = useState(false);
+  const [isManageMembersDialogOpen, setManageMembersDialogOpen] = useState(false); // State for the new dialog
 
   const projectRole = currentProject?.members?.find(member => member.user_uid === user?.uid)?.project_role;
   const globalRole = user?.global_role;
@@ -85,7 +87,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   <DropdownMenuItem>
                     Settings
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setManageMembersDialogOpen(true)}>
                     Members
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -137,6 +139,11 @@ const Sidebar: React.FC<SidebarProps> = ({
       <CreateProjectDialog
         isOpen={isCreateProjectDialogOpen}
         onClose={() => setCreateProjectDialogOpen(false)}
+      />
+      <ManageMembersDialog 
+        isOpen={isManageMembersDialogOpen} 
+        onClose={() => setManageMembersDialogOpen(false)} 
+        project={currentProject}
       />
     </div>
   );
