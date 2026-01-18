@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -13,10 +13,16 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useProjectContext } from '@/context/ProjectContext';
-import { ProjectRoleEnum } from '@/types/types_projects';
+import { ProjectRoleEnum, ProjectMember } from '@/types/types_projects';
+import { lookupUser } from '@/api/users';
+
+type DetailedProjectMember = ProjectMember & { email?: string };
 
 interface ManageMembersDialogProps {
   isOpen: boolean;
@@ -25,6 +31,34 @@ interface ManageMembersDialogProps {
 
 const ManageMembersDialog: React.FC<ManageMembersDialogProps> = ({ isOpen, onClose }) => {
   const { currentProject, inviteMember, removeMember, updateMemberRole } = useProjectContext();
+  const [detailedMembers, setDetailedMembers] = useState<DetailedProjectMember[]>([]);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+
+  useEffect(() => {
+    if (currentProject?.members) {
+      setIsLoadingMembers(true);
+      const fetchMemberDetails = async () => {
+        const membersWithDetails = await Promise.all(
+          currentProject.members.map(async (member) => {
+            try {
+              const userProfile: { email?: string; username?: string | null } = await lookupUser({ uid: member.uid });
+              // CORRECTED: Changed user.username to userProfile.username
+              return { ...member, email: userProfile.email, username: userProfile.username || member.username };
+            } catch (error) {
+              console.error(`Failed to lookup user ${member.uid}`, error);
+              return member;
+            }
+          })
+        );
+        setDetailedMembers(membersWithDetails);
+        setIsLoadingMembers(false);
+      };
+
+      fetchMemberDetails();
+    } else {
+      setDetailedMembers([]);
+    }
+  }, [currentProject?.members]);
 
   if (!currentProject) return null;
 
@@ -45,9 +79,13 @@ const ManageMembersDialog: React.FC<ManageMembersDialogProps> = ({ isOpen, onClo
     }
   };
 
+  const isOwner = (memberId: string) => {
+    return currentProject.owner_uid === memberId;
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Manage Members for {currentProject.name}</DialogTitle>
           <DialogDescription>
@@ -55,38 +93,52 @@ const ManageMembersDialog: React.FC<ManageMembersDialogProps> = ({ isOpen, onClo
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <Button onClick={handleInvite}>Invite Member</Button>
+          <Button onClick={handleInvite} className="w-full sm:w-auto">Invite Member</Button>
           <div className="space-y-2">
-            {currentProject.members?.map((member) => (
-              <div key={member.uid} className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <Avatar>
-                    <AvatarImage src={member.avatar_url || undefined} />
-                    <AvatarFallback>{member.username?.charAt(0) || 'U'}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-semibold">{member.username || member.uid}</p>
-                    <p className="text-sm text-muted-foreground">{member.project_role}</p>
+            {isLoadingMembers ? (
+              <p>Loading member details...</p>
+            ) : (
+              detailedMembers.map((member) => (
+                <div key={member.uid} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted">
+                  <div className="flex items-center space-x-4">
+                    <Avatar>
+                      <AvatarImage src={member.avatar_url || undefined} />
+                      <AvatarFallback>{member.username?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-semibold">{member.username || 'Unnamed User'}</p>
+                      <p className="text-sm text-muted-foreground">{member.email || 'No email available'}</p>
+                      <p className="text-xs text-muted-foreground">UID: {member.uid}</p>
+                    </div>
                   </div>
+                  {!isOwner(member.uid) && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">...</Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>Change Role</DropdownMenuSubTrigger>
+                          <DropdownMenuContent>
+                            {Object.values(ProjectRoleEnum)
+                              .filter(role => role !== member.project_role && role !== ProjectRoleEnum.OWNER)
+                              .map(role => (
+                                <DropdownMenuItem key={role} onSelect={() => handleChangeRole(member.uid, role)}>
+                                  Set as {role}
+                                </DropdownMenuItem>
+                              ))}
+                          </DropdownMenuContent>
+                        </DropdownMenuSub>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-red-500" onSelect={() => handleKickMember(member.uid)}>
+                          Kick Member
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost">...</Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem onSelect={() => handleChangeRole(member.uid, ProjectRoleEnum.EDITOR)}>
-                      Make Editor
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleChangeRole(member.uid, ProjectRoleEnum.VIEWER)}>
-                      Make Viewer
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleKickMember(member.uid)}>
-                      Kick Member
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </DialogContent>
