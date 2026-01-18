@@ -22,8 +22,8 @@ const Header: React.FC<HeaderProps> = ({ user, model, onModelChange, onToggleSet
     const handleGetToken = async () => {
         try {
             const token = await getAuthToken();
-            console.log("JWT Token:", token);
-            alert("JWT Token copied to console");
+            await navigator.clipboard.writeText(token);
+            alert("JWT Token copied to clipboard!");
         } catch (error) {
             console.error("Error getting JWT token:", error);
             alert("Error getting JWT token. See console for details.");
@@ -32,8 +32,8 @@ const Header: React.FC<HeaderProps> = ({ user, model, onModelChange, onToggleSet
 
     const handleGetCurrentProjectId = () => {
         if (currentProject) {
-            console.log("Current Project ID:", currentProject.id);
-            alert(`Current Project ID: ${currentProject.id}`);
+            navigator.clipboard.writeText(currentProject.id);
+            alert("Project ID copied to clipboard!");
         } else {
             console.log("No project selected.");
             alert("No project selected.");
