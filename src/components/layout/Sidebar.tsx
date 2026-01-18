@@ -53,7 +53,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const { user } = useAuthContext();
   const [isCreateProjectDialogOpen, setCreateProjectDialogOpen] = useState(false);
 
-  const projectRole = currentProject?.members.find(member => member.user_uid === user?.uid)?.project_role;
+  const projectRole = currentProject?.members?.find(member => member.user_uid === user?.uid)?.project_role;
   const globalRole = user?.global_role;
 
   return (
@@ -125,12 +125,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                 e.preventDefault();
                 onConversationSelect(conversation.id);
               }}
-              className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${
-                conversation.id === activeConversationId
+              className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${                conversation.id === activeConversationId
                   ? 'bg-muted text-primary'
                   : 'text-muted-foreground hover:bg-muted'
-              }`}
-            >
+              }`}>
               {conversation.name}
             </a>
           ))}
