@@ -4,6 +4,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AuthenticatedUser } from '@/context/authcontext'; // Import the new user type
 import ModelSelector from '@/components/chat/ModelSelector';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { getAuthToken } from '@/api/getAuthToken';
+import { useProjectContext } from '@/context/ProjectContext';
 
 interface HeaderProps {
     user: AuthenticatedUser | null;
@@ -15,6 +17,29 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ user, model, onModelChange, onToggleSettings, onLogin, onLogout }) => {
+    const { currentProject } = useProjectContext();
+
+    const handleGetToken = async () => {
+        try {
+            const token = await getAuthToken();
+            console.log("JWT Token:", token);
+            alert("JWT Token copied to console");
+        } catch (error) {
+            console.error("Error getting JWT token:", error);
+            alert("Error getting JWT token. See console for details.");
+        }
+    };
+
+    const handleGetCurrentProjectId = () => {
+        if (currentProject) {
+            console.log("Current Project ID:", currentProject.id);
+            alert(`Current Project ID: ${currentProject.id}`);
+        } else {
+            console.log("No project selected.");
+            alert("No project selected.");
+        }
+    };
+
     return (
         <header className="flex items-center justify-between p-4 border-b">
             <ModelSelector model={model} onModelChange={onModelChange} />
@@ -38,6 +63,8 @@ const Header: React.FC<HeaderProps> = ({ user, model, onModelChange, onToggleSet
                         <DropdownMenuSeparator />
                         <DropdownMenuItem>Profile</DropdownMenuItem>
                         <DropdownMenuItem onClick={onToggleSettings}>Settings</DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleGetToken}>Get JWT Token</DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleGetCurrentProjectId}>Get Project ID</DropdownMenuItem>
                         <DropdownMenuSeparator />
                         {/* Use the onLogout prop for the sign out action */}
                         <DropdownMenuItem onClick={onLogout}>Sign out</DropdownMenuItem>
