@@ -1,22 +1,20 @@
 
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { PlusCircle, ChevronsUpDown } from 'lucide-react';
+import { PlusCircle, ChevronsUpDown, PanelLeftClose, MessageSquare, Folder, Users, Settings, Check } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import CreateProjectDialog from './CreateProjectDialog';
 import ManageMembersDialog from './ManageMembersDialog'; 
 import { useAuthContext } from '@/context/authcontext';
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ProjectDetail, ProjectListDetail } from '@/types/types_projects';
 
 interface Conversation {
@@ -27,12 +25,14 @@ interface Conversation {
 interface SidebarProps {
   conversations: Conversation[];
   activeConversationId: string | null;
-  isCreatingChat: boolean; // Add prop to handle loading state
+  isCreatingChat: boolean;
   onNewConversation: () => void;
   onConversationSelect: (id: string) => void;
   projects: ProjectListDetail[];
   currentProject: ProjectDetail | null;
   onProjectSelect: (id: string) => void;
+  isSidebarOpen: boolean;
+  onToggleSidebar: () => void;
 }
 
 const roleVariantMap: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -56,6 +56,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   projects,
   currentProject,
   onProjectSelect,
+  isSidebarOpen,
+  onToggleSidebar,
 }) => {
   const { user } = useAuthContext();
   const [isCreateProjectDialogOpen, setCreateProjectDialogOpen] = useState(false);
@@ -65,92 +67,104 @@ const Sidebar: React.FC<SidebarProps> = ({
   const globalRole = user?.global_role;
 
   return (
-    <div className="flex flex-col h-full w-64 bg-background border-r">
-      <div className="p-4 border-b">
-        <h2 className="text-lg font-semibold tracking-tight">
+    <TooltipProvider delayDuration={0}>
+    <div className={`flex flex-col h-full bg-background border-r transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-72' : 'w-20'}`}>
+      <div className={`p-4 border-b flex items-center ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
+        <h2 className={`text-lg font-semibold tracking-tight ${!isSidebarOpen && 'hidden'}`}>
           Solufuse
         </h2>
+        <Button variant="ghost" size="icon" onClick={onToggleSidebar}>
+          <PanelLeftClose className="h-5 w-5" />
+        </Button>
       </div>
-      <div className="p-4">
+
+      <div className={`p-4 ${!isSidebarOpen && 'p-2'}`}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="w-full justify-between mb-4">
-              {currentProject ? currentProject.name : 'Select a project'}
-              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              <span className={!isSidebarOpen ? 'hidden' : 'truncate'}>
+                {currentProject ? currentProject.name : 'Select a project'}
+              </span>
+              <ChevronsUpDown className={`h-4 w-4 shrink-0 opacity-50 ${isSidebarOpen ? 'ml-2' : 'mx-auto'}`} />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56">
+            <DropdownMenuLabel>Projects</DropdownMenuLabel>
             {projects.map((project) => (
-               <DropdownMenuSub key={project.id}>
-                 <DropdownMenuSubTrigger>
+               <DropdownMenuItem key={project.id} onSelect={() => onProjectSelect(project.id)}>
+                  <Folder className="mr-2 h-4 w-4" />
                   <span>{project.name}</span>
-                 </DropdownMenuSubTrigger>
-                 <DropdownMenuSubContent>
-                  <DropdownMenuItem onSelect={() => onProjectSelect(project.id)}>
-                    Select Project
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem>
-                    Settings
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setManageMembersDialogOpen(true)}>
-                    Members
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel>Description</DropdownMenuLabel>
-                  <p className="px-2 py-1.5 text-sm text-muted-foreground">
-                    {project.description || 'No description'}
-                  </p>
-                 </DropdownMenuSubContent>
-               </DropdownMenuSub>
+                  {currentProject?.id === project.id && <Check className="ml-auto h-4 w-4" />}
+               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => setCreateProjectDialogOpen(true)}>
+             <DropdownMenuItem onSelect={() => setCreateProjectDialogOpen(true)}>
               <PlusCircle className="mr-2 h-4 w-4" />
               <span>Create Project</span>
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+             <DropdownMenuItem disabled={!currentProject}>
+                <Settings className="mr-2 h-4 w-4" />
+                Settings
+              </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setManageMembersDialogOpen(true)} disabled={!currentProject}>
+                <Users className="mr-2 h-4 w-4" />
+                Members
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button onClick={onNewConversation} disabled={isCreatingChat} className="w-full">
-          {isCreatingChat ? 'Creating...' : <><PlusCircle className="mr-2 h-4 w-4" /> New Chat</>}
-        </Button>
+
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <Button onClick={onNewConversation} disabled={isCreatingChat} className="w-full">
+                    {isSidebarOpen ? (
+                        isCreatingChat ? 'Creating...' : <><PlusCircle className="mr-2 h-4 w-4" /> New Chat</>
+                    ) : (
+                        <PlusCircle className="h-5 w-5" />
+                    )}
+                </Button>
+            </TooltipTrigger>
+            {!isSidebarOpen && <TooltipContent side="right"><p>New Chat</p></TooltipContent>}
+        </Tooltip>
+
       </div>
-      <div className="px-4">
-        <div className="text-xs font-semibold text-muted-foreground px-1">ROLES</div>
+
+      <div className={`px-4 ${!isSidebarOpen && 'px-2'}`}>
+        <div className={`text-xs font-semibold text-muted-foreground px-1 ${!isSidebarOpen && 'hidden'}`}>ROLES</div>
         <div className="flex flex-wrap gap-1 mt-2">
-            {globalRole && <Badge variant={roleVariantMap[globalRole] || 'outline'}>{globalRole}</Badge>}
-            {currentUserProjectRole && <Badge variant={roleVariantMap[currentUserProjectRole] || 'outline'}>{currentUserProjectRole}</Badge>}
-            {(!globalRole && !currentUserProjectRole && user) && <Badge variant={'outline'}>user</Badge>}
+            {globalRole && <Badge variant={roleVariantMap[globalRole] || 'outline'}>{isSidebarOpen ? globalRole : globalRole.charAt(0).toUpperCase()}</Badge>}
+            {currentUserProjectRole && <Badge variant={roleVariantMap[currentUserProjectRole] || 'outline'}>{isSidebarOpen ? currentUserProjectRole : currentUserProjectRole.charAt(0).toUpperCase()}</Badge>}
+            {(!globalRole && !currentUserProjectRole && user) && <Badge variant={'outline'}>{isSidebarOpen ? 'user' : 'U'}</Badge>}
         </div>
       </div>
+
       <div className="flex-1 overflow-y-auto mt-4">
-        <nav className="px-2">
+        <nav className="grid gap-1 p-2">
           {conversations.map((conversation) => (
-            <a
-              key={conversation.id}
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                onConversationSelect(conversation.id);
-              }}
-              className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${                conversation.id === activeConversationId
-                  ? 'bg-muted text-primary'
-                  : 'text-muted-foreground hover:bg-muted'
-              }`}>
-              {conversation.name}
-            </a>
+             <Tooltip key={conversation.id}>
+                <TooltipTrigger asChild>
+                    <a
+                    href="#"
+                    onClick={(e) => {
+                        e.preventDefault();
+                        onConversationSelect(conversation.id);
+                    }}
+                    className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${conversation.id === activeConversationId ? 'bg-muted text-primary' : 'text-muted-foreground hover:bg-muted'} ${!isSidebarOpen && 'justify-center'}`}>
+                        <MessageSquare className={`h-5 w-5 ${isSidebarOpen && 'mr-3'}`} />
+                        <span className={`truncate ${!isSidebarOpen && 'hidden'}`}>{conversation.name}</span>
+                    </a>
+                </TooltipTrigger>
+                {!isSidebarOpen && <TooltipContent side="right"><p>{conversation.name}</p></TooltipContent>}
+            </Tooltip>
           ))}
         </nav>
       </div>
-      <CreateProjectDialog
-        isOpen={isCreateProjectDialogOpen}
-        onClose={() => setCreateProjectDialogOpen(false)}
-      />
-      <ManageMembersDialog 
-        isOpen={isManageMembersDialogOpen} 
-        onClose={() => setManageMembersDialogOpen(false)} 
-      />
+      
+      <CreateProjectDialog isOpen={isCreateProjectDialogOpen} onClose={() => setCreateProjectDialogOpen(false)} />
+      {currentProject && <ManageMembersDialog isOpen={isManageMembersDialogOpen} onClose={() => setManageMembersDialogOpen(false)} project={currentProject} />}
     </div>
+    </TooltipProvider>
   );
 };
 

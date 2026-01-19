@@ -9,7 +9,7 @@ import { Send, Bot, FolderOpen } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import SettingsDialog from '@/components/chat/SettingsDialog';
-import FileExplorer from '@/components/layout/FileExplorer'; // Updated import
+import FileExplorer from '@/components/layout/FileExplorer';
 import { useAuthContext } from '@/context/authcontext';
 import { createChat, getChats, postMessage } from '@/api/chat';
 import { listProjects, getProjectDetails } from '@/api/projects';
@@ -23,13 +23,13 @@ const ChatPage: React.FC = () => {
     const navigate = useNavigate();
 
     const [input, setInput] = useState('');
-    const [model, setModel] = useState('gemini');
     const [chats, setChats] = useState<Chat[]>([]);
     const [activeChatId, setActiveChatId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isCreatingChat, setIsCreatingChat] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isFileExplorerOpen, setFileExplorerOpen] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     
     const [projects, setProjects] = useState<ProjectListDetail[]>([]);
     const [currentProject, setCurrentProject] = useState<ProjectDetail | null>(null);
@@ -42,9 +42,7 @@ const ChatPage: React.FC = () => {
     }
 
     useEffect(() => {
-        if (chatId) {
-            setActiveChatId(chatId);
-        }
+        setActiveChatId(chatId ?? null);
     }, [chatId]);
 
     useEffect(() => {
@@ -68,39 +66,19 @@ const ChatPage: React.FC = () => {
     }, [user, selectedProjectId]);
 
     const handleNewConversation = async () => {
-        if (!user) {
-            loginWithGoogle();
-            return;
-        }
-        if (!selectedProjectId) {
-            alert("Please select a project before starting a new chat.");
-            return;
-        }
-
+        if (!user) { loginWithGoogle(); return; }
+        if (!selectedProjectId) { alert("Please select a project first."); return; }
         const apiKey = getApiKey();
-        if (!apiKey) {
-            alert('Please add your API key in the settings.');
-            setIsSettingsOpen(true);
-            return;
-        }
+        if (!apiKey) { alert('Please add your API key in settings.'); setIsSettingsOpen(true); return; }
 
         setIsCreatingChat(true);
         try {
-            const newChatNumber = chats.reduce((max, chat) => {
-                if (chat.title.startsWith('New Chat ')) {
-                    const num = parseInt(chat.title.replace('New Chat ', ''), 10);
-                    return isNaN(num) ? max : Math.max(max, num);
-                }
-                return max;
-            }, 0) + 1;
-            const newChatTitle = `New Chat ${newChatNumber}`;
-
-            const newChat = await createChat(selectedProjectId, { title: newChatTitle, api_key: apiKey });
-            setChats([...chats, newChat]);
+            const newChat = await createChat(selectedProjectId, { title: "New Chat", api_key: apiKey });
+            setChats(prev => [...prev, newChat]);
             navigate(`/chats/${newChat.short_id}`);
         } catch (error) {
             console.error("Failed to create chat:", error);
-            alert("Sorry, we couldn't create a new chat. Please try again later.");
+            alert("Sorry, we couldn't create a new chat.");
         } finally {
             setIsCreatingChat(false);
         }
@@ -112,59 +90,65 @@ const ChatPage: React.FC = () => {
 
     const handleProjectSelect = (projectId: string) => {
         setSelectedProjectId(projectId);
+        navigate('/');
     }
 
     const handleSend = async () => {
-        if (input.trim() && activeChatId) {
-            const userInput = input;
-            const newMessage: Message = { content: userInput, role: 'user' };
+        if (!input.trim() || !selectedProjectId) return;
 
-            const updatedChatsWithUserMessage = chats.map(chat => {
-                if (chat.short_id === activeChatId) {
-                    return { ...chat, messages: [...chat.messages, newMessage] };
-                }
-                return chat;
-            });
+        let currentChatId = activeChatId;
 
-            setChats(updatedChatsWithUserMessage);
-            setInput('');
+        // If there's no active chat, create one first.
+        if (!currentChatId) {
+            const apiKey = getApiKey();
+            if (!apiKey) { alert('Please add your API key in settings.'); setIsSettingsOpen(true); return; }
+            
             setIsLoading(true);
-
             try {
-                const aiResponse = await postMessage(activeChatId, { content: userInput, role: 'user' });
-                const aiMessage: Message = { content: aiResponse.content, role: 'assistant' };
-
-                const updatedChatsWithAiMessage = updatedChatsWithUserMessage.map(chat => {
-                    if (chat.short_id === activeChatId) {
-                        return { ...chat, messages: [...chat.messages, aiMessage] };
-                    }
-                    return chat;
-                });
-                setChats(updatedChatsWithAiMessage);
-
+                const newChat = await createChat(selectedProjectId, { title: "New Chat", api_key: apiKey });
+                setChats(prev => [...prev, newChat]);
+                navigate(`/chats/${newChat.short_id}`, { replace: true });
+                currentChatId = newChat.short_id;
             } catch (error) {
-                console.error("Failed to send message:", error);
-                const errorMessageText = error instanceof Error ? error.message : 'Sorry, I encountered an error.';
-                const errorMessage: Message = { content: errorMessageText, role: 'assistant' };
-                const updatedChatsWithError = updatedChatsWithUserMessage.map(chat => {
-                    if (chat.short_id === activeChatId) {
-                        return { ...chat, messages: [...chat.messages, errorMessage] };
-                    }
-                    return chat;
-                });
-                setChats(updatedChatsWithError);
-            } finally {
+                console.error("Failed to create chat:", error);
+                alert("Sorry, we couldn't create a new chat.");
                 setIsLoading(false);
+                return;
             }
+        }
+
+        if (!currentChatId) return; // Safeguard
+
+        const userInput = input;
+        const newMessage: Message = { content: userInput, role: 'user' };
+
+        // Optimistic UI update with user message
+        setChats(prev => prev.map(chat => 
+            chat.short_id === currentChatId ? { ...chat, messages: [...chat.messages, newMessage] } : chat
+        ));
+        setInput('');
+        setIsLoading(true);
+
+        try {
+            // Post the message and then refetch all chats for consistency
+            await postMessage(currentChatId, { content: userInput, role: 'user' });
+            const updatedChats = await getChats(selectedProjectId);
+            setChats(updatedChats);
+        } catch (error) {
+            console.error("Failed to send message:", error);
+            const errorMsg = error instanceof Error ? error.message : 'An unknown error occurred.';
+            const errorMessage: Message = { content: `Error: ${errorMsg}`, role: 'assistant' };
+            setChats(prev => prev.map(chat => 
+                chat.short_id === currentChatId ? { ...chat, messages: [...chat.messages, errorMessage] } : chat
+            ));
+        } finally {
+            setIsLoading(false);
         }
     };
 
+
     if (authLoading) {
-        return (
-            <div className="flex h-screen w-full items-center justify-center">
-                <p>Loading...</p>
-            </div>
-        );
+        return <div className="flex h-screen w-full items-center justify-center"><p>Loading...</p></div>;
     }
 
     const activeChat = chats.find(c => c.short_id === activeChatId);
@@ -173,6 +157,8 @@ const ChatPage: React.FC = () => {
     return (
         <div className="flex h-screen bg-background text-foreground">
             <Sidebar
+                isSidebarOpen={isSidebarOpen}
+                onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
                 conversations={chats.map(c => ({ id: c.short_id, name: c.title }))}
                 activeConversationId={activeChatId}
                 isCreatingChat={isCreatingChat}
@@ -183,11 +169,9 @@ const ChatPage: React.FC = () => {
                 onProjectSelect={handleProjectSelect}
             />
             <div className="flex flex-1 relative overflow-hidden">
-                 <div className={`flex flex-col flex-1 transition-all duration-300 ease-in-out ${isFileExplorerOpen ? 'mr-80' : 'mr-0'}`}>
+                <div className={`flex flex-col flex-1 transition-all duration-300 ease-in-out ${isFileExplorerOpen && selectedProjectId ? 'mr-80' : 'mr-0'}`}>
                     <Header
                         user={user}
-                        model={model}
-                        onModelChange={setModel}
                         onToggleSettings={() => setIsSettingsOpen(true)}
                         onLogin={loginWithGoogle}
                         onLogout={logout}
@@ -197,52 +181,29 @@ const ChatPage: React.FC = () => {
                         <div className="max-w-4xl mx-auto h-full">
                             {!currentProject ? (
                                 <div className="flex flex-col items-center justify-center h-full">
-                                    <Bot size={72} />
-                                    <p className="text-2xl mt-4">Welcome to Solufuse</p>
-                                    <p className='mt-2'>Please select a project from the sidebar to start chatting.</p>
+                                    <Bot size={72} /><p className="text-2xl mt-4">Welcome to Solufuse</p><p className='mt-2'>Please select a project to start.</p>
                                 </div>
                             ) : !activeChatId ? (
                                 <div className="flex flex-col items-center justify-center h-full">
-                                    <Bot size={72} />
-                                    <p className="text-2xl mt-4">How can I help you today?</p>
-                                    <p className='mt-2'>Select a conversation or start a new one.</p>
+                                    <Bot size={72} /><p className="text-2xl mt-4">How can I help you today?</p><p className='mt-2'>Type your message below to start a new chat.</p>
                                 </div>
                             ) : (
                                 <div className="flex flex-col h-full">
                                     <div className="flex-1 space-y-4">
                                         {messages.map((message, index) => (
                                             <div key={index} className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
-                                                {message.role !== 'user' && (
-                                                    <Avatar>
-                                                        <AvatarImage src="/logo.svg" alt="Solufuse" />
-                                                        <AvatarFallback>AI</AvatarFallback>
-                                                    </Avatar>
-                                                )}
+                                                {message.role !== 'user' && <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>AI</AvatarFallback></Avatar>}
                                                 <div className={`p-3 rounded-lg max-w-[70%] ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                                                     <p className="font-bold">{message.role === 'user' ? 'You' : 'AI'}</p>
                                                     <ReactMarkdown>{message.content}</ReactMarkdown>
                                                 </div>
-                                                {message.role === 'user' && user && (
-                                                    <Avatar>
-                                                        <AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback>
-                                                    </Avatar>
-                                                )}
+                                                {message.role === 'user' && user && <Avatar><AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback></Avatar>}
                                             </div>
                                         ))}
-                                        {isLoading && (
+                                        {isLoading && !activeChat?.messages.some(m => m.role === 'assistant') && (
                                             <div className="flex items-start gap-3">
-                                                <Avatar>
-                                                    <AvatarImage src="/logo.svg" alt="Solufuse" />
-                                                    <AvatarFallback>AI</AvatarFallback>
-                                                </Avatar>
-                                                <div className="p-3 rounded-lg max-w-[70%] bg-muted">
-                                                    <p className="font-bold">AI</p>
-                                                    <div className="bouncing-dots">
-                                                        <span></span>
-                                                        <span></span>
-                                                        <span></span>
-                                                    </div>
-                                                </div>
+                                                <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>AI</AvatarFallback></Avatar>
+                                                <div className="p-3 rounded-lg max-w-[70%] bg-muted"><p className="font-bold">AI</p><div className="bouncing-dots"><span></span><span></span><span></span></div></div>
                                             </div>
                                         )}
                                         <div ref={messagesEndRef} />
@@ -254,10 +215,7 @@ const ChatPage: React.FC = () => {
                     <footer className="p-4">
                         <div className="max-w-4xl mx-auto">
                             <div className="flex justify-center mb-2">
-                                <Button onClick={() => setFileExplorerOpen(!isFileExplorerOpen)} disabled={!currentProject} variant="outline">
-                                    <FolderOpen className="h-4 w-4 mr-2" />
-                                    Browse Files
-                                </Button>
+                                <Button onClick={() => setFileExplorerOpen(!isFileExplorerOpen)} disabled={!currentProject} variant="outline"><FolderOpen className="h-4 w-4 mr-2" />Browse Files</Button>
                             </div>
                             <div className="flex w-full items-center space-x-2 p-2 rounded-full bg-muted">
                                 <Input
@@ -268,11 +226,10 @@ const ChatPage: React.FC = () => {
                                     value={input}
                                     onChange={(e) => setInput(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                                    disabled={!activeChatId || isLoading || !currentProject}
+                                    disabled={!currentProject || isLoading}
                                 />
-                                <Button type="submit" size="icon" onClick={handleSend} disabled={!input.trim() || !activeChatId || isLoading || !currentProject} className="rounded-full">
-                                    <Send className="h-4 w-4" />
-                                    <span className="sr-only">Send</span>
+                                <Button type="submit" size="icon" onClick={handleSend} disabled={!input.trim() || !currentProject || isLoading} className="rounded-full">
+                                    <Send className={isSidebarOpen ? "h-4 w-4" : "h-5 w-5"} /><span className="sr-only">Send</span>
                                 </Button>
                             </div>
                         </div>

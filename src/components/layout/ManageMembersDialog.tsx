@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useProjectContext } from '@/context/ProjectContext';
-import { ProjectRoleEnum, ProjectMember } from '@/types/types_projects';
+import { ProjectDetail, ProjectRoleEnum, ProjectMember } from '@/types/types_projects';
 import { lookupUser } from '@/api/users';
 import { Badge } from '@/components/ui/badge';
 import { roleVariantMap } from '@/lib/utils';
@@ -29,19 +29,20 @@ type DetailedProjectMember = ProjectMember & { email?: string };
 interface ManageMembersDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  project: ProjectDetail;
 }
 
-const ManageMembersDialog: React.FC<ManageMembersDialogProps> = ({ isOpen, onClose }) => {
-  const { currentProject, inviteMember, removeMember, updateMemberRole } = useProjectContext();
+const ManageMembersDialog: React.FC<ManageMembersDialogProps> = ({ isOpen, onClose, project }) => {
+  const { inviteMember, removeMember, updateMemberRole } = useProjectContext();
   const [detailedMembers, setDetailedMembers] = useState<DetailedProjectMember[]>([]);
   const [isLoadingMembers, setIsLoadingMembers] = useState(false);
 
   useEffect(() => {
-    if (currentProject?.members) {
+    if (project?.members) {
       setIsLoadingMembers(true);
       const fetchMemberDetails = async () => {
         const membersWithDetails = await Promise.all(
-          currentProject.members.map(async (member) => {
+          project.members.map(async (member) => {
             try {
               const userProfile: { email?: string; username?: string | null } = await lookupUser({ uid: member.uid });
               return { ...member, email: userProfile.email, username: userProfile.username || member.username };
@@ -59,9 +60,7 @@ const ManageMembersDialog: React.FC<ManageMembersDialogProps> = ({ isOpen, onClo
     } else {
       setDetailedMembers([]);
     }
-  }, [currentProject?.members]);
-
-  if (!currentProject) return null;
+  }, [project?.members]);
 
   const handleInvite = () => {
     const email = prompt("Enter email of the user to invite:");
@@ -81,14 +80,14 @@ const ManageMembersDialog: React.FC<ManageMembersDialogProps> = ({ isOpen, onClo
   };
 
   const isOwner = (memberId: string) => {
-    return currentProject.owner_uid === memberId;
+    return project.owner_uid === memberId;
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Manage Members for {currentProject.name}</DialogTitle>
+          <DialogTitle>Manage Members for {project.name}</DialogTitle>
           <DialogDescription>
             Invite, remove, and manage roles for project members.
           </DialogDescription>

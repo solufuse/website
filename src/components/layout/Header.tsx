@@ -3,7 +3,6 @@ import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AuthenticatedUser } from '@/context/authcontext';
-import ModelSelector from '@/components/chat/ModelSelector';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { getAuthToken } from '@/api/getAuthToken';
 import { Settings } from 'lucide-react';
@@ -11,15 +10,13 @@ import type { ProjectDetail } from '@/types/types_projects';
 
 interface HeaderProps {
     user: AuthenticatedUser | null;
-    model: string;
-    onModelChange: (model: string) => void;
     onToggleSettings: () => void;
     onLogin: () => void;
     onLogout: () => void;
     currentProject: ProjectDetail | null;
 }
 
-const Header: React.FC<HeaderProps> = ({ user, model, onModelChange, onToggleSettings, onLogin, onLogout, currentProject }) => {
+const Header: React.FC<HeaderProps> = ({ user, onToggleSettings, onLogin, onLogout, currentProject }) => {
 
     const handleGetToken = async () => {
         try {
@@ -47,7 +44,7 @@ const Header: React.FC<HeaderProps> = ({ user, model, onModelChange, onToggleSet
 
     return (
         <header className="flex items-center justify-between p-4 border-b">
-            <ModelSelector model={model} onModelChange={onModelChange} />
+            <div></div>
             <div className="flex items-center gap-4">
                 {user ? (
                     <>

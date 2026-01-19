@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { getApiKey, saveApiKey } from '@/utils/apiKeyManager'; // Import the new functions
+import { ModeToggle } from './ModeToggle';
 
 interface SettingsDialogProps {
   isOpen: boolean;
@@ -41,20 +42,30 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose }) => {
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
-            Manage your API key here. The key will be saved in your browser's local storage.
+            Manage your application settings here.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <label htmlFor="api-key" className="text-sm font-medium">
-            Gemini API Key
-          </label>
-          <Input
-            id="api-key"
-            value={apiKeyInput}
-            onChange={(e) => setApiKeyInput(e.target.value)}
-            placeholder="Enter your API key"
-            type="password"
-          />
+        <div className="grid gap-6 py-4">
+          <div>
+            <label htmlFor="api-key" className="text-sm font-medium">
+              Gemini API Key
+            </label>
+            <Input
+              id="api-key"
+              value={apiKeyInput}
+              onChange={(e) => setApiKeyInput(e.target.value)}
+              placeholder="Enter your API key"
+              type="password"
+              className="mt-2"
+            />
+            <p className='text-xs text-muted-foreground mt-2'>You can get your API key from <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener noreferrer" className='underline'>https://aistudio.google.com/api-keys</a>.</p>
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Theme</span>
+            <ModeToggle />
+          </div>
+
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
