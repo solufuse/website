@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
@@ -50,6 +50,23 @@ const ChatPage: React.FC = () => {
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
+    
+    const fetchProjects = useCallback(async () => {
+        if (user) {
+            const response = await listProjects();
+            setProjects(response.projects);
+            return response.projects;
+        }
+        return [];
+    }, [user]);
+
+    const fetchProjectDetails = useCallback(async (id: string) => {
+        if (user) {
+            const details = await getProjectDetails(id);
+            setCurrentProject(details);
+            localStorage.setItem('lastProjectId', id);
+        }
+    }, [user]);
 
     useEffect(() => {
         if (projectId) {
@@ -66,29 +83,18 @@ const ChatPage: React.FC = () => {
     }, [chats, activeChatId]);
 
     useEffect(() => {
-        if (user) {
-            listProjects().then(response => {
-                setProjects(response.projects);
-                if (!selectedProjectId && response.projects.length > 0) {
-                    const lastProjectId = localStorage.getItem('lastProjectId');
-                    if (lastProjectId && response.projects.some(p => p.id === lastProjectId)) {
-                        setSelectedProjectId(lastProjectId);
-                    } else {}
-                }
-            });
-        }
-    }, [user, selectedProjectId]);
+        fetchProjects();
+    }, [fetchProjects]);
 
     useEffect(() => {
-        if (user && selectedProjectId) {
-            getProjectDetails(selectedProjectId).then(setCurrentProject);
+        if (selectedProjectId) {
+            fetchProjectDetails(selectedProjectId);
             getChats(selectedProjectId).then(setChats);
-            localStorage.setItem('lastProjectId', selectedProjectId);
         } else {
             setCurrentProject(null);
             setChats([]);
         }
-    }, [user, selectedProjectId]);
+    }, [selectedProjectId, fetchProjectDetails]);
 
     const handleNewConversation = async () => {
         if (!user) { loginWithGoogle(); return; }
@@ -131,10 +137,21 @@ const ChatPage: React.FC = () => {
         }
     };
 
-    const handleProjectSelect = (projectId: string) => {
-        setSelectedProjectId(projectId);
-        navigate(`/chats/${projectId}`);
+    const handleProjectSelect = (id: string) => {
+        setSelectedProjectId(id);
+        navigate(`/chats/${id}`);
     }
+
+    const handleProjectCreated = async (newProjectId: string) => {
+        await fetchProjects();
+        handleProjectSelect(newProjectId);
+    };
+
+    const handleMembersChanged = async () => {
+        if (selectedProjectId) {
+            await fetchProjectDetails(selectedProjectId);
+        }
+    };
 
     const handleSend = async () => {
         if (!input.trim() || !selectedProjectId) return;
@@ -227,6 +244,8 @@ const ChatPage: React.FC = () => {
                 projects={projects}
                 currentProject={currentProject}
                 onProjectSelect={handleProjectSelect}
+                onProjectCreated={handleProjectCreated}
+                onMembersChanged={handleMembersChanged}
             />
             <div className="flex flex-col flex-1 overflow-hidden">
                 <Header

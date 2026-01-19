@@ -35,6 +35,8 @@ interface SidebarProps {
   onProjectSelect: (id: string) => void;
   isSidebarOpen: boolean;
   onToggleSidebar: () => void;
+  onProjectCreated: (newProjectId: string) => void;
+  onMembersChanged: () => void;
 }
 
 const roleVariantMap: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -61,6 +63,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   onProjectSelect,
   isSidebarOpen,
   onToggleSidebar,
+  onProjectCreated,
+  onMembersChanged,
 }) => {
   const { user } = useAuthContext();
   const [isCreateProjectDialogOpen, setCreateProjectDialogOpen] = useState(false);
@@ -211,8 +215,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         </nav>
       </ScrollArea>
       
-      <CreateProjectDialog isOpen={isCreateProjectDialogOpen} onClose={() => setCreateProjectDialogOpen(false)} />
-      {currentProject && <ManageMembersDialog isOpen={isManageMembersDialogOpen} onClose={() => setManageMembersDialogOpen(false)} project={currentProject} />}
+      <CreateProjectDialog isOpen={isCreateProjectDialogOpen} onClose={() => setCreateProjectDialogOpen(false)} onProjectCreated={onProjectCreated} />
+      {currentProject && <ManageMembersDialog isOpen={isManageMembersDialogOpen} onClose={() => setManageMembersDialogOpen(false)} project={currentProject} onMembersChanged={onMembersChanged} />}
     </div>
     </TooltipProvider>
   );

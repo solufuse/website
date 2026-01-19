@@ -9,79 +9,96 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+    DropdownMenuSeparator,
+    DropdownMenuSub,
+    DropdownMenuSubContent,
+    DropdownMenuSubTrigger,
+    DropdownMenuPortal
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useProjectContext } from '@/context/ProjectContext';
 import { ProjectDetail, ProjectRoleEnum, ProjectMember } from '@/types/types_projects';
-import { lookupUser } from '@/api/users';
+import { inviteOrUpdateMember, kickMember } from '@/api/projects';
 import { Badge } from '@/components/ui/badge';
 import { roleVariantMap } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
+import { useAuthContext } from '@/context/authcontext';
 
-type DetailedProjectMember = ProjectMember & { email?: string };
+// No longer need to extend the type, as the backend provides everything.
+type DetailedProjectMember = ProjectMember;
 
 interface ManageMembersDialogProps {
   isOpen: boolean;
   onClose: () => void;
   project: ProjectDetail;
+  onMembersChanged: () => void; // Callback to refresh project details
 }
 
-const ManageMembersDialog: React.FC<ManageMembersDialogProps> = ({ isOpen, onClose, project }) => {
-  const { inviteMember, removeMember, updateMemberRole } = useProjectContext();
-  const [detailedMembers, setDetailedMembers] = useState<DetailedProjectMember[]>([]);
-  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+const ManageMembersDialog: React.FC<ManageMembersDialogProps> = ({ isOpen, onClose, project, onMembersChanged }) => {
+  const { user } = useAuthContext();
+  // The project.members array is already detailed, so we can use it directly.
+  const [detailedMembers, setDetailedMembers] = useState<DetailedProjectMember[]>(project.members || []);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [isInviting, setIsInviting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  // This effect now simply syncs the state with the prop.
+  // The redundant user lookup calls have been removed.
   useEffect(() => {
-    if (project?.members) {
-      setIsLoadingMembers(true);
-      const fetchMemberDetails = async () => {
-        const membersWithDetails = await Promise.all(
-          project.members.map(async (member) => {
-            try {
-              const userProfile: { email?: string; username?: string | null } = await lookupUser({ uid: member.uid });
-              return { ...member, email: userProfile.email, username: userProfile.username || member.username };
-            } catch (error) {
-              console.error(`Failed to lookup user ${member.uid}`, error);
-              return member;
-            }
-          })
+    setDetailedMembers(project.members || []);
+  }, [project]);
+
+  const handleInvite = async () => {
+    if (!inviteEmail.trim()) {
+        setError('Please enter a valid email address.');
+        return;
+    }
+    setIsInviting(true);
+    setError(null);
+    try {
+        await inviteOrUpdateMember(project.id, { email: inviteEmail, role: ProjectRoleEnum.VIEWER });
+        setInviteEmail('');
+        onMembersChanged(); // Refresh the project details
+    } catch (err) {
+        console.error("Failed to invite member:", err);
+        setError(err instanceof Error ? err.message : 'An unknown error occurred during invitation.');
+    } finally {
+        setIsInviting(false);
+    }
+  };
+
+  const handleChangeRole = async (userId: string, newRole: ProjectRoleEnum) => {
+    try {
+        await inviteOrUpdateMember(project.id, { uid: userId, role: newRole });
+        // Optimistically update the UI
+        setDetailedMembers(prevMembers => 
+            prevMembers.map(member => 
+                member.uid === userId ? { ...member, project_role: newRole } : member
+            )
         );
-        setDetailedMembers(membersWithDetails);
-        setIsLoadingMembers(false);
-      };
-
-      fetchMemberDetails();
-    } else {
-      setDetailedMembers([]);
-    }
-  }, [project?.members]);
-
-  const handleInvite = () => {
-    const email = prompt("Enter email of the user to invite:");
-    if (email) {
-      inviteMember({ email, role: ProjectRoleEnum.VIEWER });
+        onMembersChanged(); // Also call the parent refresh for full consistency
+    } catch (err) {
+        console.error(`Failed to change role for ${userId}:`, err);
+        alert('Failed to change member role.');
     }
   };
 
-  const handleChangeRole = (userId: string, newRole: ProjectRoleEnum) => {
-    updateMemberRole(userId, newRole);
-  };
-
-  const handleKickMember = (userId: string) => {
+  const handleKickMember = async (userId: string) => {
     if (window.confirm("Are you sure you want to kick this member?")) {
-      removeMember(userId);
+        try {
+            await kickMember(project.id, userId);
+            onMembersChanged();
+        } catch (err) {
+            console.error(`Failed to kick member ${userId}:`, err);
+            alert('Failed to kick member.');
+        }
     }
   };
 
-  const isOwner = (memberId: string) => {
-    return project.owner_uid === memberId;
-  };
+  const currentUserIsAdmin = project.members.some(m => m.uid === user?.uid && (m.project_role === ProjectRoleEnum.ADMIN || m.project_role === ProjectRoleEnum.OWNER));
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -92,59 +109,74 @@ const ManageMembersDialog: React.FC<ManageMembersDialogProps> = ({ isOpen, onClo
             Invite, remove, and manage roles for project members.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
-          <Button onClick={handleInvite} className="w-full sm:w-auto">Invite Member</Button>
-          <div className="space-y-2">
-            {isLoadingMembers ? (
-              <p>Loading member details...</p>
-            ) : (
-              detailedMembers.map((member) => (
-                <div key={member.uid} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted">
-                  <div className="flex items-center space-x-4">
-                    <Avatar>
-                      <AvatarImage src={member.avatar_url || undefined} />
-                      <AvatarFallback>{member.username?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-semibold">{member.username || 'Unnamed User'}</p>
-                      <p className="text-sm text-muted-foreground">{member.email || 'No email available'}</p>
-                      <p className="text-xs text-muted-foreground">UID: {member.uid}</p>
-                    </div>
+        
+        {currentUserIsAdmin && (
+            <div className="space-y-2 pt-4">
+                <div className="flex space-x-2">
+                    <Input 
+                        type="email" 
+                        placeholder="user@example.com"
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        disabled={isInviting}
+                    />
+                    <Button onClick={handleInvite} disabled={isInviting || !inviteEmail.trim()}>
+                        {isInviting ? 'Inviting...' : 'Invite'}
+                    </Button>
+                </div>
+                {error && <p className="text-sm text-red-500 px-1">{error}</p>}
+            </div>
+        )}
+
+        <div className="mt-4 space-y-2 h-80 overflow-y-auto pr-2">
+            {detailedMembers.map((member) => (
+              <div key={member.uid} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted">
+                <div className="flex items-center space-x-4 min-w-0">
+                  <Avatar>
+                    <AvatarImage src={member.avatar_url || undefined} />
+                    <AvatarFallback>{member.username?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="font-semibold truncate">{member.username || 'Unnamed User'}</p>
+                    <p className="text-sm text-muted-foreground truncate">{member.email || 'No email available'}</p>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant={roleVariantMap[member.project_role] || 'outline'}>
-                      {member.project_role}
-                    </Badge>
-                    {!isOwner(member.uid) && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">...</Button>
-                        </DropdownMenuTrigger>
+                </div>
+                <div className="flex items-center space-x-2 flex-shrink-0">
+                  <Badge variant={roleVariantMap[member.project_role] || 'outline'}>
+                    {member.project_role}
+                  </Badge>
+                  {currentUserIsAdmin && member.project_role !== ProjectRoleEnum.OWNER && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">...</Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuPortal>
                         <DropdownMenuContent>
                           <DropdownMenuSub>
                             <DropdownMenuSubTrigger>Change Role</DropdownMenuSubTrigger>
-                            <DropdownMenuContent>
-                              {Object.values(ProjectRoleEnum)
-                                .filter(role => role !== member.project_role && role !== ProjectRoleEnum.OWNER)
-                                .map(role => (
-                                  <DropdownMenuItem key={role} onSelect={() => handleChangeRole(member.uid, role)}>
-                                    Set as {role}
-                                  </DropdownMenuItem>
-                                ))}
-                            </DropdownMenuContent>
+                            <DropdownMenuPortal>
+                                <DropdownMenuSubContent>
+                                {Object.values(ProjectRoleEnum)
+                                    .filter(role => role !== member.project_role && role !== ProjectRoleEnum.OWNER)
+                                    .map(role => (
+                                    <DropdownMenuItem key={role} onSelect={() => handleChangeRole(member.uid, role)}>
+                                        Set as {role}
+                                    </DropdownMenuItem>
+                                    ))}
+                                </DropdownMenuSubContent>
+                            </DropdownMenuPortal>
                           </DropdownMenuSub>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem className="text-red-500" onSelect={() => handleKickMember(member.uid)}>
                             Kick Member
                           </DropdownMenuItem>
                         </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                  </div>
+                      </DropdownMenuPortal>
+                    </DropdownMenu>
+                  )}
                 </div>
-              ))
-            )}
-          </div>
+              </div>
+            ))}
         </div>
       </DialogContent>
     </Dialog>
