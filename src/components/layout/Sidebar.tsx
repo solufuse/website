@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { PlusCircle, ChevronsUpDown, PanelLeftClose, MessageSquare, Folder, Users, Settings, Check, Trash2 } from 'lucide-react';
+import { PlusCircle, ChevronsUpDown, PanelLeftClose, Folder, Users, Settings, Check, Trash2, MoreVertical } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -148,30 +148,47 @@ const Sidebar: React.FC<SidebarProps> = ({
              <Tooltip key={conversation.id}>
                 <TooltipTrigger asChild>
                     <a
-                    href="#"
-                    onClick={(e) => {
-                        e.preventDefault();
-                        onConversationSelect(conversation.id);
-                    }}
-                    className={`flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md ${conversation.id === activeConversationId ? 'bg-muted text-primary' : 'text-muted-foreground hover:bg-muted'} ${!isSidebarOpen && 'justify-center'}`}
+                        href="#"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            onConversationSelect(conversation.id);
+                        }}
+                        className={`group relative flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md ${conversation.id === activeConversationId ? 'bg-muted text-primary' : 'text-muted-foreground hover:bg-muted'} ${!isSidebarOpen && 'justify-center'}`}
                     >
-                        <div className="flex items-center truncate">
-                            <MessageSquare className={`h-5 w-5 ${isSidebarOpen && 'mr-3'}`} />
+                        <div className="flex items-center flex-1 min-w-0">
                             <span className={`truncate ${!isSidebarOpen && 'hidden'}`}>{conversation.name}</span>
                         </div>
                         {isSidebarOpen && (
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                    onDeleteConversation(conversation.id);
-                                }}
-                            >
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div className="ml-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-6 w-6"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                e.preventDefault();
+                                            }}
+                                        >
+                                            <MoreVertical className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent>
+                                        <DropdownMenuItem
+                                            className="text-destructive"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                e.preventDefault();
+                                                onDeleteConversation(conversation.id);
+                                            }}
+                                        >
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            <span>Delete</span>
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
                         )}
                     </a>
                 </TooltipTrigger>
