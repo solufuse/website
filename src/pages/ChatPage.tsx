@@ -15,6 +15,7 @@ import { createChat, getChats, postMessage, deleteChat } from '@/api/chat';
 import { listProjects, getProjectDetails } from '@/api/projects';
 import { uploadFiles } from '@/api/files';
 import { getApiKey } from '@/utils/apiKeyManager';
+import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Chat, Message } from '@/types/types_chat';
 import type { ProjectListDetail, ProjectDetail } from '@/types/types_projects';
 
@@ -212,41 +213,43 @@ const ChatPage: React.FC = () => {
                 />
                 <div className="flex flex-1 overflow-hidden">
                     <div className="flex flex-col flex-1">
-                        <main className="flex-1 overflow-y-auto p-4">
-                            <div className="max-w-4xl mx-auto h-full">
-                                {!currentProject ? (
-                                    <div className="flex flex-col items-center justify-center h-full">
-                                        <Bot size={72} /><p className="text-2xl mt-4">Welcome to Solufuse</p><p className='mt-2'>Please select a project to start.</p>
-                                    </div>
-                                ) : !activeChatId ? (
-                                    <div className="flex flex-col items-center justify-center h-full">
-                                        <Bot size={72} /><p className="text-2xl mt-4">How can I help you today?</p><p className='mt-2'>Type your message below to start a new chat.</p>
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col h-full">
-                                        <div className="flex-1 space-y-4">
-                                            {messages.map((message, index) => (
-                                                <div key={index} className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
-                                                    {message.role !== 'user' && <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>AI</AvatarFallback></Avatar>}
-                                                    <div className={`p-3 rounded-lg max-w-[70%] ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                                                        <p className="font-bold">{message.role === 'user' ? 'You' : 'AI'}</p>
-                                                        <ReactMarkdown>{message.content}</ReactMarkdown>
-                                                    </div>
-                                                    {message.role === 'user' && user && <Avatar><AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback></Avatar>}
-                                                </div>
-                                            ))}
-                                            {isLoading && !activeChat?.messages.some(m => m.role === 'assistant') && (
-                                                <div className="flex items-start gap-3">
-                                                    <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>AI</AvatarFallback></Avatar>
-                                                    <div className="p-3 rounded-lg max-w-[70%] bg-muted"><p className="font-bold">AI</p><div className="bouncing-dots"><span></span><span></span><span></span></div></div>
-                                                </div>
-                                            )}
-                                            <div ref={messagesEndRef} />
+                        <ScrollArea className="flex-1">
+                            <main className="p-4">
+                                <div className="max-w-4xl mx-auto h-full">
+                                    {!currentProject ? (
+                                        <div className="flex flex-col items-center justify-center h-full">
+                                            <Bot size={72} /><p className="text-2xl mt-4">Welcome to Solufuse</p><p className='mt-2'>Please select a project to start.</p>
                                         </div>
-                                    </div>
-                                )}
-                            </div>
-                        </main>
+                                    ) : !activeChatId ? (
+                                        <div className="flex flex-col items-center justify-center h-full">
+                                            <Bot size={72} /><p className="text-2xl mt-4">How can I help you today?</p><p className='mt-2'>Type your message below to start a new chat.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col h-full">
+                                            <div className="flex-1 space-y-4">
+                                                {messages.map((message, index) => (
+                                                    <div key={index} className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
+                                                        {message.role !== 'user' && <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>AI</AvatarFallback></Avatar>}
+                                                        <div className={`p-3 rounded-lg max-w-[70%] ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                                                            <p className="font-bold">{message.role === 'user' ? 'You' : 'AI'}</p>
+                                                            <ReactMarkdown>{message.content}</ReactMarkdown>
+                                                        </div>
+                                                        {message.role === 'user' && user && <Avatar><AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback></Avatar>}
+                                                    </div>
+                                                ))}
+                                                {isLoading && !activeChat?.messages.some(m => m.role === 'assistant') && (
+                                                    <div className="flex items-start gap-3">
+                                                        <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>AI</AvatarFallback></Avatar>
+                                                        <div className="p-3 rounded-lg max-w-[70%] bg-muted"><p className="font-bold">AI</p><div className="bouncing-dots"><span></span><span></span><span></span></div></div>
+                                                    </div>
+                                                )}
+                                                <div ref={messagesEndRef} />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </main>
+                        </ScrollArea>
                         <footer className="p-4">
                             <div className="max-w-4xl mx-auto">
                                 <div className="flex justify-center mb-2 space-x-2">

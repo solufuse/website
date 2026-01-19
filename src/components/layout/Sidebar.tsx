@@ -15,6 +15,7 @@ import ManageMembersDialog from './ManageMembersDialog';
 import { useAuthContext } from '@/context/authcontext';
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ProjectDetail, ProjectListDetail } from '@/types/types_projects';
 
 interface Conversation {
@@ -141,7 +142,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto mt-4">
+      <ScrollArea className="flex-1 mt-4">
         <nav className="grid gap-1 p-2">
           {conversations.map((conversation) => (
              <Tooltip key={conversation.id}>
@@ -178,7 +179,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             </Tooltip>
           ))}
         </nav>
-      </div>
+      </ScrollArea>
       
       <CreateProjectDialog isOpen={isCreateProjectDialogOpen} onClose={() => setCreateProjectDialogOpen(false)} />
       {currentProject && <ManageMembersDialog isOpen={isManageMembersDialogOpen} onClose={() => setManageMembersDialogOpen(false)} project={currentProject} />}
