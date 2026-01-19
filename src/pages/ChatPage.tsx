@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,8 @@ import type { ProjectListDetail, ProjectDetail } from '@/types/types_projects';
 
 const ChatPage: React.FC = () => {
     const { user, loading: authLoading, loginWithGoogle, logout } = useAuthContext();
+    const { chatId } = useParams<{ chatId?: string }>();
+    const navigate = useNavigate();
 
     const [input, setInput] = useState('');
     const [model, setModel] = useState('gemini');
@@ -37,6 +40,12 @@ const ChatPage: React.FC = () => {
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
+
+    useEffect(() => {
+        if (chatId) {
+            setActiveChatId(chatId);
+        }
+    }, [chatId]);
 
     useEffect(() => {
         scrollToBottom()
@@ -88,7 +97,7 @@ const ChatPage: React.FC = () => {
 
             const newChat = await createChat(selectedProjectId, { title: newChatTitle, api_key: apiKey });
             setChats([...chats, newChat]);
-            setActiveChatId(newChat.short_id);
+            navigate(`/chats/${newChat.short_id}`);
         } catch (error) {
             console.error("Failed to create chat:", error);
             alert("Sorry, we couldn't create a new chat. Please try again later.");
@@ -98,7 +107,7 @@ const ChatPage: React.FC = () => {
     };
 
     const handleConversationSelect = (id: string) => {
-        setActiveChatId(id);
+        navigate(`/chats/${id}`);
     };
 
     const handleProjectSelect = (projectId: string) => {

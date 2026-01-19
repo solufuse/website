@@ -8,6 +8,7 @@ import { buildFileTree } from '@/utils/fileTree';
 import FileNode from './FileNode';
 import FileContextMenu from './FileContextMenu';
 import { X } from 'lucide-react'; // Icon for the close button
+import { DropZone } from './DropZone';
 
 interface FileExplorerProps {
     isOpen: boolean;
@@ -33,6 +34,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
     const [error, setError] = useState<string | null>(null);
     const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
     const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['.']));
+    const [isDraggingFile, setIsDraggingFile] = useState(false);
 
     const [contextMenu, setContextMenu] = useState<{ isOpen: boolean; position: { x: number, y: number }, file: FileInfo | null }>({
         isOpen: false,
@@ -132,6 +134,41 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
         handleRefresh: () => fetchAllFiles(),
     };
 
+    const handleDragEnter = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingFile(true);
+    };
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.currentTarget.contains(e.relatedTarget as Node)) {
+            return;
+        }
+        setIsDraggingFile(false);
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
+
+    const handleDrop = async (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingFile(false);
+
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            console.log('Dropped files:', files);
+            alert(`${files.length} file(s) dropped. Upload functionality to be implemented.`);
+            // Implement file upload logic here
+            // e.g., await uploadFiles(files, { projectId });
+            // fetchAllFiles();
+        }
+    };
+
     const renderTree = (nodes: FileTreeNode[], level = 0) => {
         return nodes.map(node => (
             <React.Fragment key={node.path}>
@@ -151,7 +188,14 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
     };
 
     return (
-        <div className={`h-full bg-background border-l transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'} ${className}`}>
+        <div 
+            className={`relative h-full bg-background border-l transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'} ${className}`}
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+        >
+            <DropZone isDraggingFile={isDraggingFile} />
             <div className="flex justify-between items-center p-2 border-b">
                 <h3 className="font-semibold">File Explorer</h3>
                 <Button variant="ghost" size="icon" onClick={onClose}>
