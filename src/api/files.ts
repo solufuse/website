@@ -1,3 +1,4 @@
+
 import { FileInfo } from '../types';
 import { getAuthToken } from './getAuthToken';
 
@@ -26,12 +27,15 @@ const buildUrl = (endpoint: string, { projectId, sessionUid }: ApiParams): URL =
 };
 
 /**
- * Lists all files and folders.
+ * Lists all files and folders for a given path.
+ * @param {string} path The path to list files from.
  * @param {ApiParams} params - Object containing optional projectId and sessionUid.
  * @returns {Promise<FileInfo[]>} A list of file information objects.
  */
-export const listFiles = async ({ projectId, sessionUid }: ApiParams = {}): Promise<FileInfo[]> => {
+export const listFiles = async (path: string, params: ApiParams = {}): Promise<FileInfo[]> => {
+    const { projectId, sessionUid } = params;
     const url = buildUrl('/files/details', { projectId, sessionUid });
+    url.searchParams.append('path', path);
     const token = await getAuthToken();
     url.searchParams.append('_', new Date().getTime().toString()); // Cache-busting
 

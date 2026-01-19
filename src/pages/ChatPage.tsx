@@ -1,12 +1,14 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Bot } from 'lucide-react';
+import { Send, Bot, FolderOpen } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import SettingsDialog from '@/components/chat/SettingsDialog';
+import FileExplorerDialog from '@/components/layout/FileExplorerDialog';
 import { useAuthContext } from '@/context/authcontext';
 import { createChat, getChats, postMessage } from '@/api/chat';
 import { listProjects, getProjectDetails } from '@/api/projects';
@@ -24,6 +26,7 @@ const ChatPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [isCreatingChat, setIsCreatingChat] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [isFileExplorerOpen, setFileExplorerOpen] = useState(false);
     
     const [projects, setProjects] = useState<ProjectListDetail[]>([]);
     const [currentProject, setCurrentProject] = useState<ProjectDetail | null>(null);
@@ -207,7 +210,7 @@ const ChatPage: React.FC = () => {
                                             )}
                                             <div className={`p-3 rounded-lg max-w-[70%] ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                                                 <p className="font-bold">{message.role === 'user' ? 'You' : 'AI'}</p>
-                                                <p>{message.content}</p>
+                                                <ReactMarkdown>{message.content}</ReactMarkdown>
                                             </div>
                                             {message.role === 'user' && user && (
                                                 <Avatar>
@@ -224,7 +227,11 @@ const ChatPage: React.FC = () => {
                                             </Avatar>
                                             <div className="p-3 rounded-lg max-w-[70%] bg-muted">
                                                 <p className="font-bold">AI</p>
-                                                <p>...</p>
+                                                <div className="bouncing-dots">
+                                                    <span></span>
+                                                    <span></span>
+                                                    <span></span>
+                                                </div>
                                             </div>
                                         </div>
                                     )}
@@ -236,6 +243,12 @@ const ChatPage: React.FC = () => {
                 </main>
                 <footer className="p-4">
                     <div className="max-w-4xl mx-auto">
+                         <div className="flex justify-center mb-2">
+                            <Button onClick={() => setFileExplorerOpen(true)} disabled={!currentProject} variant="outline">
+                                <FolderOpen className="h-4 w-4 mr-2" />
+                                Browse Files
+                            </Button>
+                        </div>
                         <div className="flex w-full items-center space-x-2 p-2 rounded-full bg-muted">
                             <Input
                                 id="message"
@@ -256,6 +269,7 @@ const ChatPage: React.FC = () => {
                 </footer>
             </div>
             <SettingsDialog isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+            {selectedProjectId && <FileExplorerDialog isOpen={isFileExplorerOpen} onClose={() => setFileExplorerOpen(false)} projectId={selectedProjectId} />}
         </div>
     );
 };
