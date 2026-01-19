@@ -5,7 +5,6 @@ WORKDIR /app
 
 # Install dependencies
 COPY package*.json ./
-# CHANGED: 'npm install' instead of 'npm ci' to handle missing lockfile
 RUN npm install
 
 # Copy source and build
@@ -13,19 +12,14 @@ COPY . .
 RUN npm run build
 
 # --- Stage 2: Serve ---
-FROM node:20-alpine AS runner
+FROM nginx:alpine
 
-WORKDIR /app
+# Copy build output from the builder stage to Nginx's web root directory
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Install 'serve' globally to host static files
-RUN npm install -g serve
+# Copy the custom Nginx configuration
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy only the build output from the builder stage
-COPY --from=builder /app/dist ./dist
-
-# Expose Port 80
-ENV PORT=80
+# Expose port 80 and start Nginx
 EXPOSE 80
-
-# Start command
-CMD ["serve", "dist", "-l", "80"]
+CMD ["nginx", "-g", "daemon off;"]
