@@ -71,7 +71,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const handleCopyLink = (conversationId: string) => {
     if (currentProject) {
-        const link = `${window.location.origin}/#/chats/${currentProject.id}/${conversationId}`;
+        const link = `${window.location.origin}/chats/${currentProject.id}/${conversationId}`;
         navigator.clipboard.writeText(link);
     }
   };
