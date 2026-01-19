@@ -214,7 +214,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
 
     return (
         <div 
-            className={`relative h-full bg-background border-l transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'} ${className}`}
+            className={`relative flex flex-col h-full bg-background border-l transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'} ${className}`}
             onDragEnter={handleDragEnter}
             onDragLeave={handleDragLeave}
             onDragOver={handleDragOver}
