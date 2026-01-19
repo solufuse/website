@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { PlusCircle, ChevronsUpDown, PanelLeftClose, Folder, Users, Settings, Check, Trash2, MoreVertical } from 'lucide-react';
+import { PlusCircle, ChevronsUpDown, PanelLeftClose, Folder, Users, Settings, Check, Trash2, MoreVertical, Link } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -68,6 +68,11 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const currentUserProjectRole = currentProject?.members.find(m => m.uid === user?.uid)?.project_role;
   const globalRole = user?.global_role;
+
+  const handleCopyLink = (conversationId: string) => {
+    const link = `${window.location.origin}/#/chats/${conversationId}`;
+    navigator.clipboard.writeText(link);
+  };
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -175,6 +180,16 @@ const Sidebar: React.FC<SidebarProps> = ({
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent>
+                                        <DropdownMenuItem
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                e.preventDefault();
+                                                handleCopyLink(conversation.id);
+                                            }}
+                                        >
+                                            <Link className="mr-2 h-4 w-4" />
+                                            <span>Copy Link</span>
+                                        </DropdownMenuItem>
                                         <DropdownMenuItem
                                             className="text-destructive"
                                             onClick={(e) => {
