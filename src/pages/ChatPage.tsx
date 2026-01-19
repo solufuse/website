@@ -2,6 +2,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -231,16 +234,16 @@ const ChatPage: React.FC = () => {
                                                     <div key={index} className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
                                                         {message.role !== 'user' && <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>AI</AvatarFallback></Avatar>}
                                                         <div className={`p-3 rounded-lg max-w-[70%] ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                                                            <p className="font-bold">{message.role === 'user' ? 'You' : 'AI'}</p>
-                                                            <ReactMarkdown>{message.content}</ReactMarkdown>
+                                                            <p className="font-bold">{message.role === 'user' ? 'You' : 'Solufuse'}</p>
+                                                            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{message.content}</ReactMarkdown>
                                                         </div>
-                                                        {message.role === 'user' && user && <Avatar><AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback></Avatar>}
+                                                        {message.role === 'user' && user && <Avatar><AvatarImage src={user.photoURL ?? undefined} alt={user.displayName ?? undefined} /><AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback></Avatar>}
                                                     </div>
                                                 ))}
                                                 {isLoading && !activeChat?.messages.some(m => m.role === 'assistant') && (
                                                     <div className="flex items-start gap-3">
-                                                        <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>AI</AvatarFallback></Avatar>
-                                                        <div className="p-3 rounded-lg max-w-[70%] bg-muted"><p className="font-bold">AI</p><div className="bouncing-dots"><span></span><span></span><span></span></div></div>
+                                                        <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>Solufuse</AvatarFallback></Avatar>
+                                                        <div className="p-3 rounded-lg max-w-[70%] bg-muted"><p className="font-bold">Solufuse</p><div className="bouncing-dots"><span></span><span></span><span></span></div></div>
                                                     </div>
                                                 )}
                                                 <div ref={messagesEndRef} />
