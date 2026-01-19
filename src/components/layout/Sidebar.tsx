@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { PlusCircle, ChevronsUpDown, PanelLeftClose, MessageSquare, Folder, Users, Settings, Check } from 'lucide-react';
+import { PlusCircle, ChevronsUpDown, PanelLeftClose, MessageSquare, Folder, Users, Settings, Check, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +11,7 @@ import {
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import CreateProjectDialog from './CreateProjectDialog';
-import ManageMembersDialog from './ManageMembersDialog'; 
+import ManageMembersDialog from './ManageMembersDialog';
 import { useAuthContext } from '@/context/authcontext';
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -28,6 +28,7 @@ interface SidebarProps {
   isCreatingChat: boolean;
   onNewConversation: () => void;
   onConversationSelect: (id: string) => void;
+  onDeleteConversation: (id: string) => void;
   projects: ProjectListDetail[];
   currentProject: ProjectDetail | null;
   onProjectSelect: (id: string) => void;
@@ -53,6 +54,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   isCreatingChat,
   onNewConversation,
   onConversationSelect,
+  onDeleteConversation,
   projects,
   currentProject,
   onProjectSelect,
@@ -150,9 +152,26 @@ const Sidebar: React.FC<SidebarProps> = ({
                         e.preventDefault();
                         onConversationSelect(conversation.id);
                     }}
-                    className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${conversation.id === activeConversationId ? 'bg-muted text-primary' : 'text-muted-foreground hover:bg-muted'} ${!isSidebarOpen && 'justify-center'}`}>
-                        <MessageSquare className={`h-5 w-5 ${isSidebarOpen && 'mr-3'}`} />
-                        <span className={`truncate ${!isSidebarOpen && 'hidden'}`}>{conversation.name}</span>
+                    className={`flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md ${conversation.id === activeConversationId ? 'bg-muted text-primary' : 'text-muted-foreground hover:bg-muted'} ${!isSidebarOpen && 'justify-center'}`}
+                    >
+                        <div className="flex items-center truncate">
+                            <MessageSquare className={`h-5 w-5 ${isSidebarOpen && 'mr-3'}`} />
+                            <span className={`truncate ${!isSidebarOpen && 'hidden'}`}>{conversation.name}</span>
+                        </div>
+                        {isSidebarOpen && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    onDeleteConversation(conversation.id);
+                                }}
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        )}
                     </a>
                 </TooltipTrigger>
                 {!isSidebarOpen && <TooltipContent side="right"><p>{conversation.name}</p></TooltipContent>}

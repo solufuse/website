@@ -11,7 +11,7 @@ import Header from '@/components/layout/Header';
 import SettingsDialog from '@/components/chat/SettingsDialog';
 import FileExplorer from '@/components/layout/FileExplorer';
 import { useAuthContext } from '@/context/authcontext';
-import { createChat, getChats, postMessage } from '@/api/chat';
+import { createChat, getChats, postMessage, deleteChat } from '@/api/chat';
 import { listProjects, getProjectDetails } from '@/api/projects';
 import { uploadFiles } from '@/api/files';
 import { getApiKey } from '@/utils/apiKeyManager';
@@ -89,6 +89,22 @@ const ChatPage: React.FC = () => {
 
     const handleConversationSelect = (id: string) => {
         navigate(`/chats/${id}`);
+    };
+
+    const handleDeleteConversation = async (id: string) => {
+        const apiKey = getApiKey();
+        if (!apiKey) { alert('Please add your API key in settings.'); setIsSettingsOpen(true); return; }
+        
+        try {
+            await deleteChat(id);
+            setChats(prev => prev.filter(chat => chat.short_id !== id));
+            if (activeChatId === id) {
+                navigate('/');
+            }
+        } catch (error) {
+            console.error("Failed to delete chat:", error);
+            alert("Sorry, we couldn't delete this chat.");
+        }
     };
 
     const handleProjectSelect = (projectId: string) => {
@@ -181,6 +197,7 @@ const ChatPage: React.FC = () => {
                 isCreatingChat={isCreatingChat}
                 onNewConversation={handleNewConversation}
                 onConversationSelect={handleConversationSelect}
+                onDeleteConversation={handleDeleteConversation}
                 projects={projects}
                 currentProject={currentProject}
                 onProjectSelect={handleProjectSelect}
@@ -255,7 +272,7 @@ const ChatPage: React.FC = () => {
                             </div>
                         </footer>
                     </div>
-                    {selectedProjectId &&
+                    {selectedProjectId && isFileExplorerOpen &&
                         <FileExplorer 
                             refreshTrigger={fileExplorerKey}
                             isOpen={isFileExplorerOpen} 
