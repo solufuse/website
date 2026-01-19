@@ -8,7 +8,7 @@ import 'katex/dist/katex.min.css';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Bot, FolderOpen, Upload } from 'lucide-react';
+import { Send, Bot, FolderOpen, Upload, Clipboard } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import SettingsDialog from '@/components/chat/SettingsDialog';
@@ -202,6 +202,12 @@ const ChatPage: React.FC = () => {
         }
     };
 
+    const handleCopy = (content: string) => {
+        const isFormula = content.startsWith('$') && content.endsWith('$');
+        const textToCopy = isFormula ? `**${content}**` : content;
+        navigator.clipboard.writeText(textToCopy);
+    };
+
 
     if (authLoading) {
         return <div className="flex h-screen w-full items-center justify-center"><p>Loading...</p></div>;
@@ -250,13 +256,20 @@ const ChatPage: React.FC = () => {
                                         <div className="flex flex-col h-full">
                                             <div className="flex-1 space-y-4">
                                                 {messages.map((message, index) => (
-                                                    <div key={index} className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
+                                                    <div key={index} className={`group relative flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
                                                         {message.role !== 'user' && <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>AI</AvatarFallback></Avatar>}
                                                         <div className={`p-3 rounded-lg max-w-[70%] ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                                                             <p className="font-bold">{message.role === 'user' ? 'You' : 'Solufuse'}</p>
                                                             <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{message.content}</ReactMarkdown>
                                                         </div>
                                                         {message.role === 'user' && user && <Avatar><AvatarImage src={user.photoURL ?? undefined} alt={user.displayName ?? undefined} /><AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback></Avatar>}
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            onClick={() => handleCopy(message.content)}>
+                                                            <Clipboard className="h-4 w-4" />
+                                                        </Button>
                                                     </div>
                                                 ))}
                                                 {isLoading && messages.length > 0 && messages[messages.length - 1].role === 'user' && (
