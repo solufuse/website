@@ -164,9 +164,9 @@ const Sidebar: React.FC<SidebarProps> = ({
                             e.preventDefault();
                             onConversationSelect(conversation.id);
                         }}
-                        className={`group relative flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md ${conversation.id === activeConversationId ? 'bg-muted text-primary' : 'text-muted-foreground hover:bg-muted'} ${!isSidebarOpen && 'justify-center'}`}>
-                        <div className="flex items-center flex-1 min-w-0">
-                            <span className={`truncate ${!isSidebarOpen && 'hidden'}`}>{conversation.name}</span>
+                        className={`group relative flex items-center justify-between w-full px-3 py-2 text-sm font-medium rounded-md ${conversation.id === activeConversationId ? 'bg-muted text-primary' : 'text-muted-foreground hover:bg-muted'} ${!isSidebarOpen && 'justify-center'}`}>
+                        <div className="flex-1 min-w-0">
+                            <span className={`block truncate ${!isSidebarOpen && 'hidden'}`}>{conversation.name}</span>
                         </div>
                         {isSidebarOpen && (
                             <div className="ml-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
