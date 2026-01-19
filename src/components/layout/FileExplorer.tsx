@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { listFiles, deleteItems, renameItem, downloadItems } from '@/api/files';
 import type { FileInfo, FileTreeNode } from '@/types';
@@ -8,12 +7,14 @@ import type { ProjectDetail } from '@/types/types_projects';
 import { buildFileTree } from '@/utils/fileTree'; 
 import FileNode from './FileNode';
 import FileContextMenu from './FileContextMenu';
+import { X } from 'lucide-react'; // Icon for the close button
 
-interface FileExplorerDialogProps {
+interface FileExplorerProps {
     isOpen: boolean;
     onClose: () => void;
     projectId: string;
     currentProject: ProjectDetail | null;
+    className?: string;
 }
 
 const backgroundFileInfo: FileInfo = {
@@ -25,7 +26,7 @@ const backgroundFileInfo: FileInfo = {
     content_type: ''
 };
 
-const FileExplorerDialog: React.FC<FileExplorerDialogProps> = ({ isOpen, onClose, projectId, currentProject }) => {
+const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId, currentProject, className }) => {
     const [allItems, setAllItems] = useState<FileInfo[]>([]);
     const [fileTree, setFileTree] = useState<FileTreeNode[]>([]);
     const [loading, setLoading] = useState(false);
@@ -40,10 +41,10 @@ const FileExplorerDialog: React.FC<FileExplorerDialogProps> = ({ isOpen, onClose
     });
 
     const fetchAllFiles = useCallback(async () => {
+        if (!projectId) return;
         setLoading(true);
         setError(null);
         try {
-            // Fetch all files from the root recursively
             const fileList = await listFiles('.', { projectId, recursive: true });
             setAllItems(fileList);
             const tree = buildFileTree(fileList);
@@ -61,6 +62,7 @@ const FileExplorerDialog: React.FC<FileExplorerDialogProps> = ({ isOpen, onClose
         }
     }, [isOpen, projectId, fetchAllFiles]);
 
+    // Reset internal state when the panel is closed
     useEffect(() => {
         if (!isOpen) {
             setSelectedPaths(new Set());
@@ -69,7 +71,6 @@ const FileExplorerDialog: React.FC<FileExplorerDialogProps> = ({ isOpen, onClose
         }
     }, [isOpen]);
 
-    // When allItems updates, rebuild the tree
     useEffect(() => {
         const tree = buildFileTree(allItems);
         setFileTree(tree);
@@ -116,7 +117,7 @@ const FileExplorerDialog: React.FC<FileExplorerDialogProps> = ({ isOpen, onClose
             if (selectedPaths.size === 0) return;
             if (confirm(`Are you sure you want to delete ${selectedPaths.size} item(s)?`)) {
                 await deleteItems(Array.from(selectedPaths), { projectId });
-                fetchAllFiles(); // Refresh the entire tree
+                fetchAllFiles();
                 setSelectedPaths(new Set());
             }
         },
@@ -125,7 +126,7 @@ const FileExplorerDialog: React.FC<FileExplorerDialogProps> = ({ isOpen, onClose
             if (newName && newName !== file.filename) {
                 const newPath = file.path.substring(0, file.path.lastIndexOf('/') + 1) + newName;
                 await renameItem(file.path, newPath, { projectId });
-                fetchAllFiles(); // Refresh
+                fetchAllFiles();
             }
         },
         handleRefresh: () => fetchAllFiles(),
@@ -150,21 +151,19 @@ const FileExplorerDialog: React.FC<FileExplorerDialogProps> = ({ isOpen, onClose
     };
 
     return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-2xl h-[70vh] flex flex-col">
-                <DialogHeader>
-                    <DialogTitle>File Explorer</DialogTitle>
-                </DialogHeader>
-                <div className="flex-1 overflow-y-auto" onContextMenu={(e) => handleContextMenu(backgroundFileInfo, e)}>
-                    {loading && <p>Loading...</p>}
-                    {error && <p className="text-destructive">Error: {error}</p>}
-                    {!loading && !error && renderTree(fileTree)}
-                </div>
-                <DialogFooter>
-                    <Button variant="outline" onClick={onClose}>Close</Button>
-                </DialogFooter>
-            </DialogContent>
-            <FileContextMenu
+        <div className={`h-full bg-background border-l transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'} ${className}`}>
+            <div className="flex justify-between items-center p-2 border-b">
+                <h3 className="font-semibold">File Explorer</h3>
+                <Button variant="ghost" size="icon" onClick={onClose}>
+                    <X className="h-4 w-4" />
+                </Button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2" onContextMenu={(e) => handleContextMenu(backgroundFileInfo, e)}>
+                {loading && <p className="text-center">Loading...</p>}
+                {error && <p className="text-destructive p-2">Error: {error}</p>}
+                {!loading && !error && renderTree(fileTree)}
+            </div>
+             <FileContextMenu
                 isOpen={contextMenu.isOpen}
                 onOpenChange={(isOpen) => setContextMenu({ ...contextMenu, isOpen })}
                 position={contextMenu.position}
@@ -174,8 +173,8 @@ const FileExplorerDialog: React.FC<FileExplorerDialogProps> = ({ isOpen, onClose
                 projectId={projectId}
                 handlers={handlers}
             />
-        </Dialog>
+        </div>
     );
 };
 
-export default FileExplorerDialog;
+export default FileExplorer;
