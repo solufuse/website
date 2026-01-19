@@ -269,7 +269,13 @@ const ChatPage: React.FC = () => {
                 </footer>
             </div>
             <SettingsDialog isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
-            {selectedProjectId && <FileExplorerDialog isOpen={isFileExplorerOpen} onClose={() => setFileExplorerOpen(false)} projectId={selectedProjectId} />}
+            {selectedProjectId && 
+                <FileExplorerDialog 
+                    isOpen={isFileExplorerOpen} 
+                    onClose={() => setFileExplorerOpen(false)} 
+                    projectId={selectedProjectId} 
+                    currentProject={currentProject}
+                />}
         </div>
     );
 };
