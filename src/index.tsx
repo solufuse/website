@@ -15,7 +15,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <ProjectProvider>
             <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
               <Routes>
-                <Route path="/chats/:chatId" element={<ChatPage />} />
+                <Route path="/chats/:projectId/:chatId" element={<ChatPage />} />
+                <Route path="/chats/:projectId" element={<ChatPage />} />
                 <Route path="/" element={<ChatPage />} />
               </Routes>
             </ThemeProvider>

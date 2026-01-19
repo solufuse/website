@@ -24,7 +24,7 @@ import type { ProjectListDetail, ProjectDetail } from '@/types/types_projects';
 
 const ChatPage: React.FC = () => {
     const { user, loading: authLoading, loginWithGoogle, logout } = useAuthContext();
-    const { chatId } = useParams<{ chatId?: string }>();
+    const { projectId, chatId } = useParams<{ projectId?: string, chatId?: string }>();
     const navigate = useNavigate();
 
     const [input, setInput] = useState('');
@@ -39,7 +39,9 @@ const ChatPage: React.FC = () => {
     
     const [projects, setProjects] = useState<ProjectListDetail[]>([]);
     const [currentProject, setCurrentProject] = useState<ProjectDetail | null>(null);
-    const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+    const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
+        return projectId || localStorage.getItem('lastProjectId');
+    });
 
     const messagesEndRef = useRef<null | HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -47,6 +49,12 @@ const ChatPage: React.FC = () => {
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
+
+    useEffect(() => {
+        if (projectId) {
+            setSelectedProjectId(projectId);
+        }
+    }, [projectId]);
 
     useEffect(() => {
         setActiveChatId(chatId ?? null);
@@ -58,14 +66,26 @@ const ChatPage: React.FC = () => {
 
     useEffect(() => {
         if (user) {
-            listProjects().then(response => setProjects(response.projects));
+            listProjects().then(response => {
+                setProjects(response.projects);
+                if (!selectedProjectId && response.projects.length > 0) {
+                    const lastProjectId = localStorage.getItem('lastProjectId');
+                    if (lastProjectId && response.projects.some(p => p.id === lastProjectId)) {
+                        setSelectedProjectId(lastProjectId);
+                    } else {
+                        // Optionally default to the first project if the last one is not available
+                        // setSelectedProjectId(response.projects[0].id);
+                    }
+                }
+            });
         }
-    }, [user]);
+    }, [user, selectedProjectId]);
 
     useEffect(() => {
         if (user && selectedProjectId) {
             getProjectDetails(selectedProjectId).then(setCurrentProject);
             getChats(selectedProjectId).then(setChats);
+            localStorage.setItem('lastProjectId', selectedProjectId);
         } else {
             setCurrentProject(null);
             setChats([]);
@@ -82,7 +102,7 @@ const ChatPage: React.FC = () => {
         try {
             const newChat = await createChat(selectedProjectId, { title: "New Chat", api_key: apiKey });
             setChats(prev => [...prev, newChat]);
-            navigate(`/chats/${newChat.short_id}`);
+            navigate(`/chats/${selectedProjectId}/${newChat.short_id}`);
         } catch (error) {
             console.error("Failed to create chat:", error);
             alert("Sorry, we couldn't create a new chat.");
@@ -92,7 +112,9 @@ const ChatPage: React.FC = () => {
     };
 
     const handleConversationSelect = (id: string) => {
-        navigate(`/chats/${id}`);
+        if (selectedProjectId) {
+            navigate(`/chats/${selectedProjectId}/${id}`);
+        }
     };
 
     const handleDeleteConversation = async (id: string) => {
@@ -103,7 +125,7 @@ const ChatPage: React.FC = () => {
             await deleteChat(id);
             setChats(prev => prev.filter(chat => chat.short_id !== id));
             if (activeChatId === id) {
-                navigate('/');
+                navigate(selectedProjectId ? `/chats/${selectedProjectId}` : '/');
             }
         } catch (error) {
             console.error("Failed to delete chat:", error);
@@ -113,7 +135,7 @@ const ChatPage: React.FC = () => {
 
     const handleProjectSelect = (projectId: string) => {
         setSelectedProjectId(projectId);
-        navigate('/');
+        navigate(`/chats/${projectId}`);
     }
 
     const handleSend = async () => {
@@ -121,16 +143,15 @@ const ChatPage: React.FC = () => {
 
         let currentChatId = activeChatId;
 
-        // If there's no active chat, create one first.
         if (!currentChatId) {
             const apiKey = getApiKey();
             if (!apiKey) { alert('Please add your API key in settings.'); setIsSettingsOpen(true); return; }
             
             setIsLoading(true);
             try {
-                const newChat = await createChat(selectedProjectId, { title: "New Chat", api_key: apiKey });
+                const newChat = await createChat(selectedProjectId, { title: input.substring(0, 20) || "New Chat", api_key: apiKey });
                 setChats(prev => [...prev, newChat]);
-                navigate(`/chats/${newChat.short_id}`, { replace: true });
+                navigate(`/chats/${selectedProjectId}/${newChat.short_id}`, { replace: true });
                 currentChatId = newChat.short_id;
             } catch (error) {
                 console.error("Failed to create chat:", error);
@@ -140,12 +161,11 @@ const ChatPage: React.FC = () => {
             }
         }
 
-        if (!currentChatId) return; // Safeguard
+        if (!currentChatId) return; 
 
         const userInput = input;
         const newMessage: Message = { content: userInput, role: 'user' };
 
-        // Optimistic UI update with user message
         setChats(prev => prev.map(chat => 
             chat.short_id === currentChatId ? { ...chat, messages: [...chat.messages, newMessage] } : chat
         ));
@@ -153,7 +173,6 @@ const ChatPage: React.FC = () => {
         setIsLoading(true);
 
         try {
-            // Post the message and then refetch all chats for consistency
             await postMessage(currentChatId, { content: userInput, role: 'user' });
             const updatedChats = await getChats(selectedProjectId);
             setChats(updatedChats);
@@ -174,7 +193,7 @@ const ChatPage: React.FC = () => {
         if (files && files.length > 0 && selectedProjectId) {
             try {
                 await uploadFiles(Array.from(files), { projectId: selectedProjectId });
-                setFileExplorerKey(Date.now()); // Force re-render
+                setFileExplorerKey(Date.now());
                 alert('Files uploaded successfully!');
             } catch (error) {
                 console.error("Failed to upload files:", error);
@@ -240,7 +259,7 @@ const ChatPage: React.FC = () => {
                                                         {message.role === 'user' && user && <Avatar><AvatarImage src={user.photoURL ?? undefined} alt={user.displayName ?? undefined} /><AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback></Avatar>}
                                                     </div>
                                                 ))}
-                                                {isLoading && !activeChat?.messages.some(m => m.role === 'assistant') && (
+                                                {isLoading && messages.length > 0 && messages[messages.length - 1].role === 'user' && (
                                                     <div className="flex items-start gap-3">
                                                         <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>Solufuse</AvatarFallback></Avatar>
                                                         <div className="p-3 rounded-lg max-w-[70%] bg-muted"><p className="font-bold">Solufuse</p><div className="bouncing-dots"><span></span><span></span><span></span></div></div>
@@ -268,7 +287,7 @@ const ChatPage: React.FC = () => {
                                         autoComplete="off"
                                         value={input}
                                         onChange={(e) => setInput(e.target.value)}
-                                        onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                                        onKeyDown={(e) => e.key === 'Enter' && !isLoading && handleSend()}
                                         disabled={!currentProject || isLoading}
                                     />
                                     <Button type="submit" size="icon" onClick={handleSend} disabled={!input.trim() || !currentProject || isLoading} className="rounded-full">

@@ -70,8 +70,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   const globalRole = user?.global_role;
 
   const handleCopyLink = (conversationId: string) => {
-    const link = `${window.location.origin}/#/chats/${conversationId}`;
-    navigator.clipboard.writeText(link);
+    if (currentProject) {
+        const link = `${window.location.origin}/#/chats/${currentProject.id}/${conversationId}`;
+        navigator.clipboard.writeText(link);
+    }
   };
 
   return (
@@ -158,8 +160,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                             e.preventDefault();
                             onConversationSelect(conversation.id);
                         }}
-                        className={`group relative flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md ${conversation.id === activeConversationId ? 'bg-muted text-primary' : 'text-muted-foreground hover:bg-muted'} ${!isSidebarOpen && 'justify-center'}`}
-                    >
+                        className={`group relative flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md ${conversation.id === activeConversationId ? 'bg-muted text-primary' : 'text-muted-foreground hover:bg-muted'} ${!isSidebarOpen && 'justify-center'}`}>
                         <div className="flex items-center flex-1 min-w-0">
                             <span className={`truncate ${!isSidebarOpen && 'hidden'}`}>{conversation.name}</span>
                         </div>
@@ -174,8 +175,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 e.preventDefault();
-                                            }}
-                                        >
+                                            }}>
                                             <MoreVertical className="h-4 w-4" />
                                         </Button>
                                     </DropdownMenuTrigger>
@@ -185,8 +185,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                                 e.stopPropagation();
                                                 e.preventDefault();
                                                 handleCopyLink(conversation.id);
-                                            }}
-                                        >
+                                            }}>
                                             <Link className="mr-2 h-4 w-4" />
                                             <span>Copy Link</span>
                                         </DropdownMenuItem>
@@ -196,8 +195,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                                 e.stopPropagation();
                                                 e.preventDefault();
                                                 onDeleteConversation(conversation.id);
-                                            }}
-                                        >
+                                            }}>
                                             <Trash2 className="mr-2 h-4 w-4" />
                                             <span>Delete</span>
                                         </DropdownMenuItem>
