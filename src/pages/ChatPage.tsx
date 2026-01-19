@@ -6,7 +6,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Send, Bot, FolderOpen, Upload, Clipboard, Link } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
@@ -46,6 +46,15 @@ const ChatPage: React.FC = () => {
 
     const messagesEndRef = useRef<null | HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    useEffect(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto';
+            const scrollHeight = textareaRef.current.scrollHeight;
+            textareaRef.current.style.height = `${scrollHeight}px`;
+        }
+    }, [input]);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -211,6 +220,13 @@ const ChatPage: React.FC = () => {
         }
     };
 
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSend();
+        }
+    };
+
     const handleCopy = (content: string) => {
         const isFormula = content.startsWith('$') && content.endsWith('$');
         const textToCopy = isFormula ? `**${content}**` : content;
@@ -325,18 +341,20 @@ const ChatPage: React.FC = () => {
                                     <input type="file" ref={fileInputRef} onChange={handleFileUpload} multiple className="hidden" />
                                     <Button onClick={() => setFileExplorerOpen(!isFileExplorerOpen)} disabled={!currentProject} variant="outline"><FolderOpen className="h-4 w-4 mr-2" />Browse Files</Button>
                                 </div>
-                                <div className="flex w-full items-center space-x-2 p-2 rounded-full bg-muted">
-                                    <Input
+                                <div className="relative flex w-full items-end space-x-2 p-2 rounded-lg bg-muted">
+                                    <Textarea
+                                        ref={textareaRef}
                                         id="message"
-                                        placeholder={currentProject ? "Type your message..." : "Please select a project first"}
-                                        className="flex-1 bg-transparent border-none focus:ring-0 focus:outline-none"
+                                        placeholder={currentProject ? "Type your message... (Shift+Enter for new line)" : "Please select a project first"}
+                                        className="flex-1 bg-transparent border-none focus:ring-0 focus:outline-none resize-none overflow-y-auto max-h-48 text-base leading-6 pr-12"
                                         autoComplete="off"
                                         value={input}
                                         onChange={(e) => setInput(e.target.value)}
-                                        onKeyDown={(e) => e.key === 'Enter' && !isLoading && handleSend()}
+                                        onKeyDown={handleKeyDown}
                                         disabled={!currentProject || isLoading}
+                                        rows={1}
                                     />
-                                    <Button type="submit" size="icon" onClick={handleSend} disabled={!input.trim() || !currentProject || isLoading} className="rounded-full">
+                                    <Button type="submit" size="icon" onClick={handleSend} disabled={!input.trim() || !currentProject || isLoading} className="rounded-full absolute bottom-4 right-4">
                                         <Send className={isSidebarOpen ? "h-4 w-4" : "h-5 w-5"} /><span className="sr-only">Send</span>
                                     </Button>
                                 </div>
