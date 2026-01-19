@@ -176,7 +176,8 @@ const ChatPage: React.FC = () => {
         if (!currentChatId) return; 
 
         const userInput = input;
-        const newMessage: Message = { content: userInput, role: 'user' };
+        const tempMessageId = `temp-${Date.now()}`;
+        const newMessage: Message = { id: tempMessageId, content: userInput, role: 'user', timestamp: new Date().toISOString() };
         setChats(prev => prev.map(chat => chat.short_id === currentChatId ? { ...chat, messages: [...chat.messages, newMessage] } : chat));
         setInput('');
         setIsLoading(true);
@@ -188,7 +189,8 @@ const ChatPage: React.FC = () => {
         } catch (error) {
             console.error("Failed to send message:", error);
             const errorMsg = error instanceof Error ? error.message : 'An unknown error occurred.';
-            const errorMessage: Message = { content: `Error: ${errorMsg}`, role: 'assistant' };
+            const errorId = `error-${Date.now()}`;
+            const errorMessage: Message = { id: errorId, content: `Error: ${errorMsg}`, role: 'assistant', timestamp: new Date().toISOString() };
             setChats(prev => prev.map(chat => chat.short_id === currentChatId ? { ...chat, messages: [...chat.messages, errorMessage] } : chat));
         } finally {
             setIsLoading(false);
@@ -271,18 +273,18 @@ const ChatPage: React.FC = () => {
                                         </div>
                                     ) : (
                                         <div className="flex flex-col h-full">
-                                            <div className="space-y-4">
-                                                {messages.map((message, index) => (
-                                                    <div key={index}>
+                                            <div className="space-y-6">
+                                                {messages.map((message) => (
+                                                    <div key={message.id}>
                                                         <div className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
-                                                            {message.role !== 'user' && <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>AI</AvatarFallback></Avatar>}
-                                                            <div className={`p-3 rounded-lg max-w-[70%] ${message.role === 'user' ? 'bg-white text-black' : 'bg-muted'}`}>
-                                                                <p className="font-bold">{message.role === 'user' ? 'You' : 'Solufuse'}</p>
+                                                            {message.role === 'assistant' && <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>AI</AvatarFallback></Avatar>}
+                                                            <div className={`max-w-[85%] ${message.role === 'user' ? 'p-3 rounded-lg bg-primary text-primary-foreground dark:bg-slate-700 dark:text-slate-50' : 'p-4 rounded-md bg-muted/50 dark:bg-slate-900/50 border border-border/70 w-full'}`}>
+                                                                <p className="font-bold mb-2">{message.role === 'user' ? 'You' : 'Solufuse'}</p>
                                                                 <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{message.content}</ReactMarkdown>
                                                             </div>
                                                             {message.role === 'user' && user && <Avatar><AvatarImage src={user.photoURL ?? undefined} alt={user.displayName ?? undefined} /><AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback></Avatar>}
                                                         </div>
-                                                        <div className={`flex items-center gap-1 mt-1 ${message.role === 'user' ? 'justify-end mr-12' : 'justify-start ml-12'}`}>
+                                                        <div className={`flex items-center gap-1 mt-2 ${message.role === 'user' ? 'justify-end mr-12' : 'justify-start ml-12'}`}>
                                                             <Tooltip>
                                                                 <TooltipTrigger asChild>
                                                                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleCopy(message.content)}>
@@ -305,7 +307,7 @@ const ChatPage: React.FC = () => {
                                                 {isLoading && messages.length > 0 && messages[messages.length - 1].role === 'user' && (
                                                     <div className="flex items-start gap-3 mt-4">
                                                         <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>Solufuse</AvatarFallback></Avatar>
-                                                        <div className="p-3 rounded-lg max-w-[70%] bg-muted"><p className="font-bold">Solufuse</p><div className="bouncing-dots"><span></span><span></span><span></span></div></div>
+                                                        <div className="p-3 rounded-lg bg-muted/50 dark:bg-slate-900/50 border border-border/70"><p className="font-bold">Solufuse</p><div className="bouncing-dots"><span></span><span></span><span></span></div></div>
                                                     </div>
                                                 )}
                                                 <div ref={messagesEndRef} />

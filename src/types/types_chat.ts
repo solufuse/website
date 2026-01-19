@@ -2,9 +2,11 @@
 // src/types/types_chat.ts
 
 export interface Message {
+    id: string;
     content: string;
     role: 'user' | 'assistant' | 'system';
-    created_at?: string; // ISO 8601 datetime string
+    timestamp: string; // ISO 8601 datetime string
+    commit_hash?: string;
 }
 
 export interface Chat {
