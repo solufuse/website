@@ -257,7 +257,7 @@ const ChatPage: React.FC = () => {
                                                     <div key={index}>
                                                         <div className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
                                                             {message.role !== 'user' && <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>AI</AvatarFallback></Avatar>}
-                                                            <div className={`p-3 rounded-lg max-w-[70%] ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                                                            <div className={`p-3 rounded-lg max-w-[70%] ${message.role === 'user' ? 'bg-white text-black' : 'bg-muted'}`}>
                                                                 <p className="font-bold">{message.role === 'user' ? 'You' : 'Solufuse'}</p>
                                                                 <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{message.content}</ReactMarkdown>
                                                             </div>
