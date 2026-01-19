@@ -5,7 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Bot, FolderOpen } from 'lucide-react';
+import { Send, Bot, FolderOpen, Upload } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import SettingsDialog from '@/components/chat/SettingsDialog';
@@ -13,6 +13,7 @@ import FileExplorer from '@/components/layout/FileExplorer';
 import { useAuthContext } from '@/context/authcontext';
 import { createChat, getChats, postMessage } from '@/api/chat';
 import { listProjects, getProjectDetails } from '@/api/projects';
+import { uploadFiles } from '@/api/files';
 import { getApiKey } from '@/utils/apiKeyManager';
 import type { Chat, Message } from '@/types/types_chat';
 import type { ProjectListDetail, ProjectDetail } from '@/types/types_projects';
@@ -30,12 +31,14 @@ const ChatPage: React.FC = () => {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isFileExplorerOpen, setFileExplorerOpen] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [fileExplorerKey, setFileExplorerKey] = useState(Date.now());
     
     const [projects, setProjects] = useState<ProjectListDetail[]>([]);
     const [currentProject, setCurrentProject] = useState<ProjectDetail | null>(null);
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
     const messagesEndRef = useRef<null | HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -145,6 +148,20 @@ const ChatPage: React.FC = () => {
             setIsLoading(false);
         }
     };
+    
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const files = event.target.files;
+        if (files && files.length > 0 && selectedProjectId) {
+            try {
+                await uploadFiles(Array.from(files), { projectId: selectedProjectId });
+                setFileExplorerKey(Date.now()); // Force re-render
+                alert('Files uploaded successfully!');
+            } catch (error) {
+                console.error("Failed to upload files:", error);
+                alert("Sorry, we couldn't upload the files.");
+            }
+        }
+    };
 
 
     if (authLoading) {
@@ -214,7 +231,9 @@ const ChatPage: React.FC = () => {
                     </main>
                     <footer className="p-4">
                         <div className="max-w-4xl mx-auto">
-                            <div className="flex justify-center mb-2">
+                            <div className="flex justify-center mb-2 space-x-2">
+                                <Button onClick={() => fileInputRef.current?.click()} disabled={!currentProject} variant="outline"><Upload className="h-4 w-4 mr-2" />Upload File</Button>
+                                <input type="file" ref={fileInputRef} onChange={handleFileUpload} multiple className="hidden" />
                                 <Button onClick={() => setFileExplorerOpen(!isFileExplorerOpen)} disabled={!currentProject} variant="outline"><FolderOpen className="h-4 w-4 mr-2" />Browse Files</Button>
                             </div>
                             <div className="flex w-full items-center space-x-2 p-2 rounded-full bg-muted">
@@ -237,6 +256,7 @@ const ChatPage: React.FC = () => {
                 </div>
                 {selectedProjectId &&
                     <FileExplorer 
+                        refreshTrigger={fileExplorerKey}
                         isOpen={isFileExplorerOpen} 
                         onClose={() => setFileExplorerOpen(false)} 
                         projectId={selectedProjectId} 

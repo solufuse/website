@@ -1,13 +1,13 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from "@/components/ui/button";
-import { listFiles, deleteItems, renameItem, downloadItems } from '@/api/files';
+import { listFiles, deleteItems, renameItem, downloadItems, uploadFiles } from '@/api/files';
 import type { FileInfo, FileTreeNode } from '@/types';
 import type { ProjectDetail } from '@/types/types_projects';
 import { buildFileTree } from '@/utils/fileTree'; 
 import FileNode from './FileNode';
 import FileContextMenu from './FileContextMenu';
-import { X } from 'lucide-react'; // Icon for the close button
+import { X, Upload } from 'lucide-react'; // Import Upload icon
 import { DropZone } from './DropZone';
 
 interface FileExplorerProps {
@@ -16,6 +16,7 @@ interface FileExplorerProps {
     projectId: string;
     currentProject: ProjectDetail | null;
     className?: string;
+    refreshTrigger?: any;
 }
 
 const backgroundFileInfo: FileInfo = {
@@ -27,14 +28,17 @@ const backgroundFileInfo: FileInfo = {
     content_type: ''
 };
 
-const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId, currentProject, className }) => {
+const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId, currentProject, className, refreshTrigger }) => {
     const [allItems, setAllItems] = useState<FileInfo[]>([]);
     const [fileTree, setFileTree] = useState<FileTreeNode[]>([]);
     const [loading, setLoading] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
     const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['.']));
     const [isDraggingFile, setIsDraggingFile] = useState(false);
+
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [contextMenu, setContextMenu] = useState<{ isOpen: boolean; position: { x: number, y: number }, file: FileInfo | null }>({
         isOpen: false,
@@ -62,9 +66,8 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
         if (isOpen && projectId) {
             fetchAllFiles();
         }
-    }, [isOpen, projectId, fetchAllFiles]);
+    }, [isOpen, projectId, fetchAllFiles, refreshTrigger]);
 
-    // Reset internal state when the panel is closed
     useEffect(() => {
         if (!isOpen) {
             setSelectedPaths(new Set());
@@ -103,6 +106,22 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
         }
         setContextMenu({ isOpen: true, position: { x: e.clientX, y: e.clientY }, file });
     };
+
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const files = event.target.files;
+        if (files && files.length > 0 && projectId) {
+            setIsUploading(true);
+            setError(null);
+            try {
+                await uploadFiles(Array.from(files), { projectId });
+                await fetchAllFiles();
+            } catch (err) {
+                setError(err instanceof Error ? err.message : 'Failed to upload files.');
+            } finally {
+                setIsUploading(false);
+            }
+        }
+    };
     
     const handlers = {
         handleNewFile: (path: string) => alert(`New file in: ${path}`),
@@ -132,6 +151,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
             }
         },
         handleRefresh: () => fetchAllFiles(),
+        handleUpload: () => fileInputRef.current?.click()
     };
 
     const handleDragEnter = (e: React.DragEvent) => {
@@ -160,12 +180,17 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
         setIsDraggingFile(false);
 
         const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            console.log('Dropped files:', files);
-            alert(`${files.length} file(s) dropped. Upload functionality to be implemented.`);
-            // Implement file upload logic here
-            // e.g., await uploadFiles(files, { projectId });
-            // fetchAllFiles();
+        if (files.length > 0 && projectId) {
+            setIsUploading(true);
+            setError(null);
+            try {
+                await uploadFiles(Array.from(files), { projectId });
+                await fetchAllFiles();
+            } catch (err) {
+                setError(err instanceof Error ? err.message : 'Failed to upload files.');
+            } finally {
+                setIsUploading(false);
+            }
         }
     };
 
@@ -197,15 +222,20 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
         >
             <DropZone isDraggingFile={isDraggingFile} />
             <div className="flex justify-between items-center p-2 border-b">
+                 <input type="file" ref={fileInputRef} onChange={handleFileUpload} multiple className="hidden" />
+                <Button variant="ghost" size="icon" onClick={handlers.handleUpload} title="Upload Files">
+                    <Upload className="h-4 w-4" />
+                </Button>
                 <h3 className="font-semibold">File Explorer</h3>
-                <Button variant="ghost" size="icon" onClick={onClose}>
+                <Button variant="ghost" size="icon" onClick={onClose} title="Close Panel">
                     <X className="h-4 w-4" />
                 </Button>
             </div>
             <div className="flex-1 overflow-y-auto p-2" onContextMenu={(e) => handleContextMenu(backgroundFileInfo, e)}>
-                {loading && <p className="text-center">Loading...</p>}
+                {loading && <p className="text-center">Loading file list...</p>}
+                {isUploading && <p className="text-center">Uploading files...</p>}
                 {error && <p className="text-destructive p-2">Error: {error}</p>}
-                {!loading && !error && renderTree(fileTree)}
+                {!loading && !error && !isUploading && renderTree(fileTree)}
             </div>
              <FileContextMenu
                 isOpen={contextMenu.isOpen}
