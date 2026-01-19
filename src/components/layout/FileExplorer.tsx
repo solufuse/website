@@ -7,7 +7,7 @@ import type { ProjectDetail } from '@/types/types_projects';
 import { buildFileTree } from '@/utils/fileTree'; 
 import FileNode from './FileNode';
 import FileContextMenu from './FileContextMenu';
-import { X, Upload } from 'lucide-react'; // Import Upload icon
+import { X, Upload, RefreshCw } from 'lucide-react'; // Import Upload and RefreshCw icons
 import { DropZone } from './DropZone';
 
 interface FileExplorerProps {
@@ -222,14 +222,19 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
         >
             <DropZone isDraggingFile={isDraggingFile} />
             <div className="flex justify-between items-center p-2 border-b">
-                 <input type="file" ref={fileInputRef} onChange={handleFileUpload} multiple className="hidden" />
-                <Button variant="ghost" size="icon" onClick={handlers.handleUpload} title="Upload Files">
-                    <Upload className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center">
+                    <Button variant="ghost" size="icon" onClick={handlers.handleUpload} title="Upload Files">
+                        <Upload className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={handlers.handleRefresh} title="Refresh Files">
+                        <RefreshCw className="h-4 w-4" />
+                    </Button>
+                </div>
                 <h3 className="font-semibold">File Explorer</h3>
                 <Button variant="ghost" size="icon" onClick={onClose} title="Close Panel">
                     <X className="h-4 w-4" />
                 </Button>
+                <input type="file" ref={fileInputRef} onChange={handleFileUpload} multiple className="hidden" />
             </div>
             <div className="flex-1 overflow-y-auto p-2" onContextMenu={(e) => handleContextMenu(backgroundFileInfo, e)}>
                 {loading && <p className="text-center">Loading file list...</p>}
