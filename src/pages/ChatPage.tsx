@@ -185,85 +185,87 @@ const ChatPage: React.FC = () => {
                 currentProject={currentProject}
                 onProjectSelect={handleProjectSelect}
             />
-            <div className="flex flex-1 relative overflow-hidden">
-                <div className={`flex flex-col flex-1 transition-all duration-300 ease-in-out ${isFileExplorerOpen && selectedProjectId ? 'mr-80' : 'mr-0'}`}>
-                    <Header
-                        user={user}
-                        onToggleSettings={() => setIsSettingsOpen(true)}
-                        onLogin={loginWithGoogle}
-                        onLogout={logout}
-                        currentProject={currentProject}
-                    />
-                    <main className="flex-1 overflow-y-auto p-4">
-                        <div className="max-w-4xl mx-auto h-full">
-                            {!currentProject ? (
-                                <div className="flex flex-col items-center justify-center h-full">
-                                    <Bot size={72} /><p className="text-2xl mt-4">Welcome to Solufuse</p><p className='mt-2'>Please select a project to start.</p>
-                                </div>
-                            ) : !activeChatId ? (
-                                <div className="flex flex-col items-center justify-center h-full">
-                                    <Bot size={72} /><p className="text-2xl mt-4">How can I help you today?</p><p className='mt-2'>Type your message below to start a new chat.</p>
-                                </div>
-                            ) : (
-                                <div className="flex flex-col h-full">
-                                    <div className="flex-1 space-y-4">
-                                        {messages.map((message, index) => (
-                                            <div key={index} className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
-                                                {message.role !== 'user' && <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>AI</AvatarFallback></Avatar>}
-                                                <div className={`p-3 rounded-lg max-w-[70%] ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                                                    <p className="font-bold">{message.role === 'user' ? 'You' : 'AI'}</p>
-                                                    <ReactMarkdown>{message.content}</ReactMarkdown>
-                                                </div>
-                                                {message.role === 'user' && user && <Avatar><AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback></Avatar>}
-                                            </div>
-                                        ))}
-                                        {isLoading && !activeChat?.messages.some(m => m.role === 'assistant') && (
-                                            <div className="flex items-start gap-3">
-                                                <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>AI</AvatarFallback></Avatar>
-                                                <div className="p-3 rounded-lg max-w-[70%] bg-muted"><p className="font-bold">AI</p><div className="bouncing-dots"><span></span><span></span><span></span></div></div>
-                                            </div>
-                                        )}
-                                        <div ref={messagesEndRef} />
+            <div className="flex flex-col flex-1 overflow-hidden">
+                <Header
+                    user={user}
+                    onToggleSettings={() => setIsSettingsOpen(true)}
+                    onLogin={loginWithGoogle}
+                    onLogout={logout}
+                    currentProject={currentProject}
+                />
+                <div className="flex flex-1 overflow-hidden">
+                    <div className="flex flex-col flex-1">
+                        <main className="flex-1 overflow-y-auto p-4">
+                            <div className="max-w-4xl mx-auto h-full">
+                                {!currentProject ? (
+                                    <div className="flex flex-col items-center justify-center h-full">
+                                        <Bot size={72} /><p className="text-2xl mt-4">Welcome to Solufuse</p><p className='mt-2'>Please select a project to start.</p>
                                     </div>
+                                ) : !activeChatId ? (
+                                    <div className="flex flex-col items-center justify-center h-full">
+                                        <Bot size={72} /><p className="text-2xl mt-4">How can I help you today?</p><p className='mt-2'>Type your message below to start a new chat.</p>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col h-full">
+                                        <div className="flex-1 space-y-4">
+                                            {messages.map((message, index) => (
+                                                <div key={index} className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
+                                                    {message.role !== 'user' && <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>AI</AvatarFallback></Avatar>}
+                                                    <div className={`p-3 rounded-lg max-w-[70%] ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                                                        <p className="font-bold">{message.role === 'user' ? 'You' : 'AI'}</p>
+                                                        <ReactMarkdown>{message.content}</ReactMarkdown>
+                                                    </div>
+                                                    {message.role === 'user' && user && <Avatar><AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback></Avatar>}
+                                                </div>
+                                            ))}
+                                            {isLoading && !activeChat?.messages.some(m => m.role === 'assistant') && (
+                                                <div className="flex items-start gap-3">
+                                                    <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>AI</AvatarFallback></Avatar>
+                                                    <div className="p-3 rounded-lg max-w-[70%] bg-muted"><p className="font-bold">AI</p><div className="bouncing-dots"><span></span><span></span><span></span></div></div>
+                                                </div>
+                                            )}
+                                            <div ref={messagesEndRef} />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </main>
+                        <footer className="p-4">
+                            <div className="max-w-4xl mx-auto">
+                                <div className="flex justify-center mb-2 space-x-2">
+                                    <Button onClick={() => fileInputRef.current?.click()} disabled={!currentProject} variant="outline"><Upload className="h-4 w-4 mr-2" />Upload File</Button>
+                                    <input type="file" ref={fileInputRef} onChange={handleFileUpload} multiple className="hidden" />
+                                    <Button onClick={() => setFileExplorerOpen(!isFileExplorerOpen)} disabled={!currentProject} variant="outline"><FolderOpen className="h-4 w-4 mr-2" />Browse Files</Button>
                                 </div>
-                            )}
-                        </div>
-                    </main>
-                    <footer className="p-4">
-                        <div className="max-w-4xl mx-auto">
-                            <div className="flex justify-center mb-2 space-x-2">
-                                <Button onClick={() => fileInputRef.current?.click()} disabled={!currentProject} variant="outline"><Upload className="h-4 w-4 mr-2" />Upload File</Button>
-                                <input type="file" ref={fileInputRef} onChange={handleFileUpload} multiple className="hidden" />
-                                <Button onClick={() => setFileExplorerOpen(!isFileExplorerOpen)} disabled={!currentProject} variant="outline"><FolderOpen className="h-4 w-4 mr-2" />Browse Files</Button>
+                                <div className="flex w-full items-center space-x-2 p-2 rounded-full bg-muted">
+                                    <Input
+                                        id="message"
+                                        placeholder={currentProject ? "Type your message..." : "Please select a project first"}
+                                        className="flex-1 bg-transparent border-none focus:ring-0 focus:outline-none"
+                                        autoComplete="off"
+                                        value={input}
+                                        onChange={(e) => setInput(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                                        disabled={!currentProject || isLoading}
+                                    />
+                                    <Button type="submit" size="icon" onClick={handleSend} disabled={!input.trim() || !currentProject || isLoading} className="rounded-full">
+                                        <Send className={isSidebarOpen ? "h-4 w-4" : "h-5 w-5"} /><span className="sr-only">Send</span>
+                                    </Button>
+                                </div>
                             </div>
-                            <div className="flex w-full items-center space-x-2 p-2 rounded-full bg-muted">
-                                <Input
-                                    id="message"
-                                    placeholder={currentProject ? "Type your message..." : "Please select a project first"}
-                                    className="flex-1 bg-transparent border-none focus:ring-0 focus:outline-none"
-                                    autoComplete="off"
-                                    value={input}
-                                    onChange={(e) => setInput(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                                    disabled={!currentProject || isLoading}
-                                />
-                                <Button type="submit" size="icon" onClick={handleSend} disabled={!input.trim() || !currentProject || isLoading} className="rounded-full">
-                                    <Send className={isSidebarOpen ? "h-4 w-4" : "h-5 w-5"} /><span className="sr-only">Send</span>
-                                </Button>
-                            </div>
-                        </div>
-                    </footer>
+                        </footer>
+                    </div>
+                    {selectedProjectId &&
+                        <FileExplorer 
+                            refreshTrigger={fileExplorerKey}
+                            isOpen={isFileExplorerOpen} 
+                            onClose={() => setFileExplorerOpen(false)} 
+                            projectId={selectedProjectId} 
+                            currentProject={currentProject}
+                            className="w-80 border-l"
+                        />
+                    }
                 </div>
-                {selectedProjectId &&
-                    <FileExplorer 
-                        refreshTrigger={fileExplorerKey}
-                        isOpen={isFileExplorerOpen} 
-                        onClose={() => setFileExplorerOpen(false)} 
-                        projectId={selectedProjectId} 
-                        currentProject={currentProject}
-                        className="absolute top-0 right-0 w-80 z-10"
-                    />
-                }
             </div>
             <SettingsDialog isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
         </div>
