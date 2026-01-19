@@ -96,6 +96,14 @@ export interface FileInfo {
     type: 'folder' | 'file';
 }
 
+/**
+ * Represents a node in the file tree, extending FileInfo to include children.
+ */
+export interface FileTreeNode extends FileInfo {
+  children: FileTreeNode[];
+}
+
+
 // Statistics about the object storage
 export interface StorageStats {
     total_size_bytes: number;

@@ -7,6 +7,7 @@ const API_URL = 'https://api.solufuse.com'; // Base URL for the API
 interface ApiParams {
     projectId?: string | null;
     sessionUid?: string | null;
+    recursive?: boolean;
 }
 
 /**
@@ -33,9 +34,12 @@ const buildUrl = (endpoint: string, { projectId, sessionUid }: ApiParams): URL =
  * @returns {Promise<FileInfo[]>} A list of file information objects.
  */
 export const listFiles = async (path: string, params: ApiParams = {}): Promise<FileInfo[]> => {
-    const { projectId, sessionUid } = params;
+    const { projectId, sessionUid, recursive } = params;
     const url = buildUrl('/files/details', { projectId, sessionUid });
     url.searchParams.append('path', path);
+    if (recursive) {
+        url.searchParams.append('recursive', 'true');
+    }
     const token = await getAuthToken();
     url.searchParams.append('_', new Date().getTime().toString()); // Cache-busting
 
