@@ -294,7 +294,7 @@ const ChatPage: React.FC = () => {
                 onMembersChanged={handleMembersChanged}
                 onProjectDeleted={handleProjectDeleted}
             />
-            <div className="flex flex-col flex-1 overflow-hidden">
+            <div className="flex flex-1 flex-col overflow-hidden">
                 <Header
                     user={user}
                     onToggleSettings={() => setIsSettingsOpen(true)}
@@ -303,7 +303,7 @@ const ChatPage: React.FC = () => {
                     currentProject={currentProject}
                 />
                 <div className="flex flex-1 overflow-hidden">
-                    <div className="flex flex-col flex-1">
+                    <div className="flex flex-1 flex-col">
                         <ScrollArea className="flex-1">
                             <main className="p-4">
                             <TooltipProvider>
@@ -403,14 +403,13 @@ const ChatPage: React.FC = () => {
                             </div>
                         </footer>
                     </div>
-                    {selectedProjectId && isFileExplorerOpen &&
+                    {selectedProjectId && 
                         <FileExplorer 
                             refreshTrigger={fileExplorerKey}
                             isOpen={isFileExplorerOpen} 
                             onClose={() => setFileExplorerOpen(false)} 
                             projectId={selectedProjectId} 
                             currentProject={currentProject}
-                            className="w-80 border-l"
                         />
                     }
                 </div>
