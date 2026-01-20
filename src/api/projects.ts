@@ -8,7 +8,7 @@ import type {
 } from '@/types/types_projects';
 import { handleResponse } from '@/utils/handleResponse';
 
-const API_BASE_URL = 'https://api.solufuse.com/';
+const API_BASE_URL = 'https://api.solufuse.com';
 
 // --- API FUNCTIONS ---
 
@@ -77,7 +77,7 @@ export const deleteProject = async (projectId: string): Promise<{ status: string
 /**
  * Invites or updates a member's role in a project.
  * @param projectId The project ID.
- * @param payload The invitation details (email or uid, and role).
+ * @param payload The invitation details (email or user_id, and role).
  * @returns A promise that resolves with the status, UID, and the new role.
  */
 export const inviteOrUpdateMember = async (projectId: string, payload: MemberInvitePayload): Promise<{ status: string; uid: string; role: string; }> => {

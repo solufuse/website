@@ -51,7 +51,7 @@ export interface ProjectCreatePayload {
 }
 
 export interface MemberInvitePayload {
-    uid?: string; // Corrected to uid from user_id to match usage
+    user_id?: string; 
     email?: string;
     role: ProjectRoleEnum;
 }
