@@ -55,8 +55,6 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
         try {
             const fileList = await listFiles('.', { projectId, recursive: true });
             setAllItems(fileList);
-            const tree = buildFileTree(fileList);
-            setFileTree(tree);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load files.');
         } finally {
@@ -80,8 +78,13 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
 
     useEffect(() => {
         const tree = buildFileTree(allItems);
-        setFileTree(tree);
-    }, [allItems]);
+        const rootNode: FileTreeNode = {
+            ...backgroundFileInfo,
+            filename: currentProject?.name || 'Project Root',
+            children: tree,
+        };
+        setFileTree([rootNode]);
+    }, [allItems, currentProject]);
 
     const handleItemClick = (item: FileInfo, e: React.MouseEvent) => {
         const isSelected = selectedPaths.has(item.path);
