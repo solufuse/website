@@ -81,7 +81,7 @@ const ManageMembersDialog: React.FC<ManageMembersDialogProps> = ({ isOpen, onClo
 
   const handleChangeRole = async (userId: string, newRole: ProjectRoleEnum) => {
     try {
-        await inviteOrUpdateMember(project.id, { uid: userId, role: newRole });
+        await inviteOrUpdateMember(project.id, { user_id: userId, role: newRole });
         onMembersChanged();
     } catch (err) {
         console.error(`Failed to change role for ${userId}:`, err);

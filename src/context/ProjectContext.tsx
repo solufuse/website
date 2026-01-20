@@ -111,8 +111,8 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
   // UPDATED to use ProjectRoleEnum and the correct payload field
   const updateMemberRole = async (targetUid: string, role: ProjectRoleEnum) => {
     if (!currentProject) return;
-    // Corrected payload to use 'uid' instead of 'user_id'
-    await inviteOrUpdateMember(currentProject.id, { uid: targetUid, role });
+    // Corrected payload to use 'user_id' instead of 'uid'
+    await inviteOrUpdateMember(currentProject.id, { user_id: targetUid, role });
     // Optimistic update
      setCurrentProject(prev => {
         if (!prev) return null;

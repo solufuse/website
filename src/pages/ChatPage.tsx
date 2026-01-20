@@ -177,10 +177,11 @@ const ChatPage: React.FC = () => {
 
     const handleSend = async () => {
         if (!input.trim() || !selectedProjectId) return;
+        const apiKey = getApiKey();
+        if (!apiKey) { alert('Please add your API key in settings.'); setIsSettingsOpen(true); return; }
+
         let currentChatId = activeChatId;
         if (!currentChatId) {
-            const apiKey = getApiKey();
-            if (!apiKey) { alert('Please add your API key in settings.'); setIsSettingsOpen(true); return; }
             setIsLoading(true);
             try {
                 const newChat = await createChat(selectedProjectId, { title: input.substring(0, 20) || "New Chat", api_key: apiKey });
@@ -195,7 +196,7 @@ const ChatPage: React.FC = () => {
             }
         }
 
-        if (!currentChatId) return; 
+        if (!currentChatId) return;
 
         const userInput = input;
         const tempMessageId = `temp-${Date.now()}`;
@@ -205,7 +206,7 @@ const ChatPage: React.FC = () => {
         setIsLoading(true);
 
         try {
-            await postMessage(currentChatId, { content: userInput, role: 'user' });
+            await postMessage(currentChatId, { content: userInput, api_key: apiKey });
             const updatedChats = await getChats(selectedProjectId);
             setChats(updatedChats);
         } catch (error) {
