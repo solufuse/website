@@ -26,6 +26,7 @@ import { Badge } from '@/components/ui/badge';
 import { roleVariantMap } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { useAuthContext } from '@/context/authcontext';
+import { MoreVertical } from 'lucide-react';
 
 // No longer need to extend the type, as the backend provides everything.
 type DetailedProjectMember = ProjectMember;
@@ -148,7 +149,9 @@ const ManageMembersDialog: React.FC<ManageMembersDialogProps> = ({ isOpen, onClo
                   {currentUserIsAdmin && member.project_role !== ProjectRoleEnum.OWNER && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">...</Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreVertical className="h-4 w-4" />
+                        </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuPortal>
                         <DropdownMenuContent>
@@ -167,7 +170,7 @@ const ManageMembersDialog: React.FC<ManageMembersDialogProps> = ({ isOpen, onClo
                             </DropdownMenuPortal>
                           </DropdownMenuSub>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-red-500" onSelect={() => handleKickMember(member.uid)}>
+                          <DropdownMenuItem className="text-destructive" onSelect={() => handleKickMember(member.uid)}>
                             Kick Member
                           </DropdownMenuItem>
                         </DropdownMenuContent>
