@@ -293,17 +293,17 @@ const ChatPage: React.FC = () => {
                         <ScrollArea className="flex-1">
                             <main className="p-4">
                             <TooltipProvider>
-                                <div className="max-w-4xl mx-auto h-full">
+                                <div className="max-w-4xl mx-auto">
                                     {!currentProject ? (
-                                        <div className="flex flex-col items-center justify-center h-full">
+                                        <div className="flex flex-col items-center justify-center">
                                             <Bot size={72} /><p className="text-2xl mt-4">Welcome to Solufuse</p><p className='mt-2'>Please select a project to start.</p>
                                         </div>
                                     ) : !activeChatId ? (
-                                        <div className="flex flex-col items-center justify-center h-full">
+                                        <div className="flex flex-col items-center justify-center">
                                             <Bot size={72} /><p className="text-2xl mt-4">How can I help you today?</p><p className='mt-2'>Type your message below to start a new chat.</p>
                                         </div>
                                     ) : (
-                                        <div className="flex flex-col h-full">
+                                        <div className="flex flex-col">
                                             <div className="space-y-6">
                                                 {messages.map((message) => (
                                                     <div key={message.id}>
