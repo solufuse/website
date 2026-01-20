@@ -162,6 +162,19 @@ const ChatPage: React.FC = () => {
         }
     };
 
+    const handleProjectDeleted = async () => {
+        if (currentProject) {
+            // In a real app, you would call an API to delete the project here.
+            // e.g., await deleteProject(currentProject.id);
+        }
+        alert('Project deleted successfully.');
+        setCurrentProject(null);
+        setSelectedProjectId(null);
+        localStorage.removeItem('lastProjectId');
+        navigate('/');
+        await fetchProjects();
+    };
+
     const handleSend = async () => {
         if (!input.trim() || !selectedProjectId) return;
         let currentChatId = activeChatId;
@@ -264,6 +277,7 @@ const ChatPage: React.FC = () => {
                 onProjectSelect={handleProjectSelect}
                 onProjectCreated={handleProjectCreated}
                 onMembersChanged={handleMembersChanged}
+                onProjectDeleted={handleProjectDeleted}
             />
             <div className="flex flex-col flex-1 overflow-hidden">
                 <Header

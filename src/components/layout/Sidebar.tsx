@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import CreateProjectDialog from './CreateProjectDialog';
 import ManageMembersDialog from './ManageMembersDialog';
+import ProjectSettingsDialog from './ProjectSettingsDialog'; // Import the new dialog
 import { useAuthContext } from '@/context/authcontext';
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -37,6 +38,7 @@ interface SidebarProps {
   onToggleSidebar: () => void;
   onProjectCreated: (newProjectId: string) => void;
   onMembersChanged: () => void;
+  onProjectDeleted: () => void; // Add prop for project deletion
 }
 
 const roleVariantMap: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -65,10 +67,12 @@ const Sidebar: React.FC<SidebarProps> = ({
   onToggleSidebar,
   onProjectCreated,
   onMembersChanged,
+  onProjectDeleted, // Destructure the new prop
 }) => {
   const { user } = useAuthContext();
   const [isCreateProjectDialogOpen, setCreateProjectDialogOpen] = useState(false);
   const [isManageMembersDialogOpen, setManageMembersDialogOpen] = useState(false);
+  const [isProjectSettingsDialogOpen, setProjectSettingsDialogOpen] = useState(false); // State for the new dialog
 
   const currentUserProjectRole = currentProject?.members.find(m => m.uid === user?.uid)?.project_role;
   const globalRole = user?.global_role;
@@ -118,7 +122,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-             <DropdownMenuItem disabled={!currentProject}>
+             <DropdownMenuItem onSelect={() => setProjectSettingsDialogOpen(true)} disabled={!currentProject}>
                 <Settings className="mr-2 h-4 w-4" />
                 Settings
               </DropdownMenuItem>
@@ -219,6 +223,14 @@ const Sidebar: React.FC<SidebarProps> = ({
       
       <CreateProjectDialog isOpen={isCreateProjectDialogOpen} onClose={() => setCreateProjectDialogOpen(false)} onProjectCreated={onProjectCreated} />
       {currentProject && <ManageMembersDialog isOpen={isManageMembersDialogOpen} onClose={() => setManageMembersDialogOpen(false)} project={currentProject} onMembersChanged={onMembersChanged} />}
+      {currentProject && (
+        <ProjectSettingsDialog
+          isOpen={isProjectSettingsDialogOpen}
+          onClose={() => setProjectSettingsDialogOpen(false)}
+          project={currentProject}
+          onProjectDeleted={onProjectDeleted}
+        />
+      )}
     </div>
     </TooltipProvider>
   );
