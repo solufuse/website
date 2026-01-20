@@ -49,7 +49,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
     });
 
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const resizeStartWidthRef = useRef<number>(0);
+    const dragEnterCounter = useRef(0);
 
     const [contextMenu, setContextMenu] = useState<{ isOpen: boolean; position: { x: number, y: number }, file: FileInfo | null }>({
         isOpen: false,
@@ -95,31 +95,12 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
         setFileTree([rootNode]);
     }, [allItems, currentProject]);
 
-    const onResizeStart: ResizableBoxProps['onResizeStart'] = () => {
-        resizeStartWidthRef.current = width;
-    };
-
     const onResize: ResizableBoxProps['onResize'] = (_e, data) => {
-        const proposedWidth = data.size.width;
-        const initialWidth = resizeStartWidthRef.current;
-        const newWidth = 2 * initialWidth - proposedWidth;
-
-        if (newWidth >= 250 && newWidth <= 1200) { // Keep constraints
-            setWidth(newWidth);
-        }
+        setWidth(data.size.width);
     };
 
     const onResizeStop: ResizableBoxProps['onResizeStop'] = (_e, data) => {
-        const proposedWidth = data.size.width;
-        const initialWidth = resizeStartWidthRef.current;
-        let finalWidth = 2 * initialWidth - proposedWidth;
-
-        // Clamp the final value to be safe
-        if (finalWidth < 250) finalWidth = 250;
-        if (finalWidth > 1200) finalWidth = 1200;
-
-        setWidth(finalWidth);
-        localStorage.setItem('fileExplorerWidth', String(finalWidth));
+        localStorage.setItem('fileExplorerWidth', String(data.size.width));
     };
 
     const handleItemClick = (item: FileInfo, e: React.MouseEvent) => {
@@ -198,43 +179,67 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
         handleRefresh: () => fetchAllFiles(),
         handleUpload: () => fileInputRef.current?.click()
     };
+    
+    // --- DRAG AND DROP LOGIC ---
 
     const handleDragStart = (item: FileInfo, e: React.DragEvent) => {
+        // Internal drag start
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('application/json', JSON.stringify(item));
         setDraggedItem(item);
     };
-
-    const handleDragOver = (e: React.DragEvent, item?: FileInfo) => {
+    
+    const handleGlobalDragEnter = (e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        
-        const isExternal = e.dataTransfer.types.includes('Files');
-        if (isExternal) {
+        dragEnterCounter.current++;
+        if (e.dataTransfer.types.includes('Files')) {
             setIsDragging(true);
         }
+    };
 
-        if (draggedItem && item && item.type === 'folder' && item.path !== draggedItem.path && !item.path.startsWith(draggedItem.path + '/')) {
-            setDropTarget(item.path);
-        } else if (item && item.type !== 'folder') {
+    const handleGlobalDragLeave = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dragEnterCounter.current--;
+        if (dragEnterCounter.current === 0) {
+            setIsDragging(false);
             setDropTarget(null);
         }
     };
 
-    const handleDragLeave = (e: React.DragEvent) => {
-        e.preventDefault();
+    const handleGlobalDragOver = (e: React.DragEvent) => {
+        e.preventDefault(); // Necessary to allow dropping
         e.stopPropagation();
-        if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-        setDropTarget(null);
-        setIsDragging(false);
     };
 
+    const handleNodeDragOver = (e: React.DragEvent, item: FileInfo) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        let newDropTarget: string | null = null;
+        const isExternal = e.dataTransfer.types.includes('Files');
+
+        if (isExternal) {
+            if (item.type === 'folder') {
+                newDropTarget = item.path;
+            }
+        } else if (draggedItem) {
+            if (item.type === 'folder' && item.path !== draggedItem.path && !item.path.startsWith(draggedItem.path + '/')) {
+                newDropTarget = item.path;
+            }
+        }
+        setDropTarget(newDropTarget);
+    };
+    
     const handleDrop = async (e: React.DragEvent, targetItem: FileInfo) => {
         e.preventDefault();
         e.stopPropagation();
-        setDropTarget(null);
-        setIsDragging(false);
         
+        dragEnterCounter.current = 0;
+        setIsDragging(false);
+        setDropTarget(null);
+
         if (e.dataTransfer.files.length > 0) {
             const files = Array.from(e.dataTransfer.files);
             if (files.length > 0 && projectId) {
@@ -259,9 +264,11 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
             return;
         }
     
-        const internalDraggedItem = JSON.parse(e.dataTransfer.getData('application/json') || 'null');
-        if (internalDraggedItem) {
-            if (!targetItem || internalDraggedItem.path === targetItem.path || targetItem.type !== 'folder' || targetItem.path.startsWith(internalDraggedItem.path + '/')) {
+        const internalDraggedItemJSON = e.dataTransfer.getData('application/json');
+        if (internalDraggedItemJSON) {
+            const internalDraggedItem = JSON.parse(internalDraggedItemJSON);
+            
+            if (!targetItem || targetItem.type !== 'folder' || targetItem.path === internalDraggedItem.path || targetItem.path.startsWith(internalDraggedItem.path + '/')) {
                 setDraggedItem(null);
                 return;
             }
@@ -292,9 +299,9 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
                     onClick={handleItemClick}
                     onContextMenu={handleContextMenu}
                     onDragStart={(node, e) => handleDragStart(node, e)}
-                    onDragOver={(node, e) => handleDragOver(e, node)}
-                    onDragLeave={(e) => handleDragLeave(e)}
+                    onDragOver={(node, e) => handleNodeDragOver(e, node)}
                     onDrop={(node, e) => handleDrop(e, node)}
+                    onDragLeave={() => {}}
                 />
                 {expandedFolders.has(node.path) && node.children.length > 0 &&
                     renderTree(node.children, level + 1)
@@ -310,10 +317,9 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
             width={width}
             height={Infinity}
             axis="x"
-            resizeHandles={['w']} // Use the west handle
+            resizeHandles={['w']}
             minConstraints={[250, Infinity]}
-            maxConstraints={[500, Infinity]}
-            onResizeStart={onResizeStart}
+            maxConstraints={[1200, Infinity]}
             onResize={onResize}
             onResizeStop={onResizeStop}
             handle={<div className="absolute top-0 -left-1 w-2 h-full cursor-col-resize group z-10"><div className="w-full h-full bg-transparent group-hover:bg-primary/20 transition-colors duration-200"></div></div>}
@@ -321,9 +327,9 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
         >
             <div 
                 className="flex flex-col h-full"
-                onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); }}
-                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                onDragLeave={handleDragLeave}
+                onDragEnter={handleGlobalDragEnter}
+                onDragLeave={handleGlobalDragLeave}
+                onDragOver={handleGlobalDragOver}
                 onDrop={(e) => handleDrop(e, backgroundFileInfo)}
             >
                 <DropZone isDraggingFile={isDragging} />
@@ -344,8 +350,6 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
                 </div>
                 <div className="flex-1 overflow-y-auto p-2" 
                     onContextMenu={(e) => handleContextMenu(backgroundFileInfo, e)}
-                    onDragOver={(e) => handleDragOver(e, backgroundFileInfo)}
-                    onDrop={(e) => handleDrop(e, backgroundFileInfo)}
                 >
                     {loading && <p className="text-center">Loading file list...</p>}
                     {isUploading && <p className="text-center">Uploading files...</p>}
