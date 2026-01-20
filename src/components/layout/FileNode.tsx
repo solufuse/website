@@ -52,16 +52,16 @@ const FileNode: React.FC<FileNodeProps> = React.memo(({
             {isFolder ? (
                 <>
                     {isExpanded ? (
-                        <ChevronDown className="h-4 w-4 mr-2 text-muted-foreground" />
+                        <ChevronDown className="h-4 w-4 mr-2 text-muted-foreground flex-shrink-0" />
                     ) : (
-                        <ChevronRight className="h-4 w-4 mr-2 text-muted-foreground" />
+                        <ChevronRight className="h-4 w-4 mr-2 text-muted-foreground flex-shrink-0" />
                     )}
-                    <Folder className="h-5 w-5 mr-2 text-yellow-500" />
+                    <Folder className="h-5 w-5 mr-2 text-yellow-500 flex-shrink-0" />
                 </>
             ) : (
-                <File className="h-5 w-5 mr-2 ml-6 text-gray-400" />
+                <File className="h-5 w-5 mr-2 ml-6 text-gray-400 flex-shrink-0" />
             )}
-            <span className="truncate text-sm">{node.filename}</span>
+            <span className="truncate text-sm flex-1 min-w-0">{node.filename}</span>
         </div>
     );
 });

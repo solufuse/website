@@ -314,7 +314,7 @@ const ChatPage: React.FC = () => {
                     currentProject={currentProject}
                 />
                 <div className="flex flex-1 overflow-hidden">
-                    <div className="flex flex-1 flex-col">
+                    <div className="flex flex-1 flex-col min-w-0">
                         <ScrollArea className="flex-1">
                             <main className="p-4">
                             <TooltipProvider>
