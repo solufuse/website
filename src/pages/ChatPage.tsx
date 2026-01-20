@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
@@ -57,7 +57,7 @@ const ChatPage: React.FC = () => {
     }, [input]);
 
     const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
     }
     
     const fetchProjects = useCallback(async () => {
@@ -87,7 +87,7 @@ const ChatPage: React.FC = () => {
         setActiveChatId(chatId ?? null);
     }, [chatId]);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         scrollToBottom()
     }, [chats, activeChatId]);
 
