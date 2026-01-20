@@ -88,7 +88,9 @@ const ChatPage: React.FC = () => {
     }, [chatId]);
 
     useLayoutEffect(() => {
-        scrollToBottom()
+        setTimeout(() => {
+            scrollToBottom();
+        }, 0);
     }, [chats, activeChatId]);
 
     useEffect(() => {
