@@ -328,7 +328,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
             >
                 <DropZone isDraggingFile={isDragging} />
                 <div className="flex justify-between items-center p-2 border-b">
-                    <div className="flex items-center">
+                    <div className="flex items-center flex-shrink-0">
                         <Button variant="ghost" size="icon" onClick={handlers.handleUpload} title="Upload Files">
                             <Upload className="h-4 w-4" />
                         </Button>
@@ -336,8 +336,8 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
                             <RefreshCw className="h-4 w-4" />
                         </Button>
                     </div>
-                    <h3 className="font-semibold overflow-hidden text-ellipsis whitespace-nowrap">File Explorer</h3>
-                    <Button variant="ghost" size="icon" onClick={onClose} title="Close Panel">
+                    <h3 className="font-semibold overflow-hidden text-ellipsis whitespace-nowrap mx-2">File Explorer</h3>
+                    <Button variant="ghost" size="icon" onClick={onClose} title="Close Panel" className="flex-shrink-0">
                         <X className="h-4 w-4" />
                     </Button>
                     <input type="file" ref={fileInputRef} onChange={handleFileUpload} multiple className="hidden" />
