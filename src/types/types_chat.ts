@@ -7,6 +7,7 @@ export interface Message {
     role: 'user' | 'assistant' | 'system';
     timestamp: string; // ISO 8601 datetime string
     commit_hash?: string;
+    user_id?: string; // UID of the user who sent the message
 }
 
 export interface Chat {

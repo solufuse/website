@@ -21,7 +21,7 @@ import { getApiKey } from '@/utils/apiKeyManager';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Chat, Message } from '@/types/types_chat';
-import type { ProjectListDetail, ProjectDetail } from '@/types/types_projects';
+import type { ProjectListDetail, ProjectDetail, ProjectMember } from '@/types/types_projects';
 
 const ChatPage: React.FC = () => {
     const { user, loading: authLoading, loginWithGoogle, logout } = useAuthContext();
@@ -202,7 +202,13 @@ const ChatPage: React.FC = () => {
 
         const userInput = input;
         const tempMessageId = `temp-${Date.now()}`;
-        const newMessage: Message = { id: tempMessageId, content: userInput, role: 'user', timestamp: new Date().toISOString() };
+        const newMessage: Message = { 
+            id: tempMessageId, 
+            content: userInput, 
+            role: 'user', 
+            timestamp: new Date().toISOString(),
+            user_id: user?.uid
+        };
         setChats(prev => prev.map(chat => chat.short_id === currentChatId ? { ...chat, messages: [...chat.messages, newMessage] } : chat));
         setInput('');
         setIsLoading(true);
@@ -276,6 +282,11 @@ const ChatPage: React.FC = () => {
     const activeChat = chats.find(c => c.short_id === activeChatId);
     const messages = activeChat ? activeChat.messages : [];
 
+    const getMessageAuthor = (message: Message): ProjectMember | null => {
+        if (message.role !== 'user' || !message.user_id) return null;
+        return currentProject?.members.find(m => m.uid === message.user_id) || null;
+    }
+
     return (
         <div className="flex h-screen bg-background text-foreground">
             <Sidebar
@@ -319,36 +330,48 @@ const ChatPage: React.FC = () => {
                                     ) : (
                                         <div className="flex flex-col">
                                             <div className="space-y-6">
-                                                {messages.map((message) => (
-                                                    <div key={message.id}>
-                                                        <div className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
-                                                            {message.role === 'assistant' && <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>AI</AvatarFallback></Avatar>}
-                                                            <div className={`max-w-[85%] ${message.role === 'user' ? 'p-3 rounded-lg bg-primary text-primary-foreground dark:bg-slate-700 dark:text-slate-50' : 'p-4 rounded-md bg-muted/50 dark:bg-slate-900/50 border border-border/70 w-full'}`}>
-                                                                <p className="font-bold mb-2">{message.role === 'user' ? 'You' : 'Solufuse'}</p>
-                                                                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{message.content}</ReactMarkdown>
+                                                {messages.map((message) => {
+                                                    const author = getMessageAuthor(message);
+                                                    const displayName = author?.username || (message.role === 'user' ? 'You' : 'Solufuse');
+                                                    const avatarUrl = author?.avatar_url || (message.role === 'user' && user ? user.photoURL : undefined);
+                                                    const avatarFallback = displayName?.charAt(0).toUpperCase() || 'U';
+
+                                                    return (
+                                                        <div key={message.id}>
+                                                            <div className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
+                                                                {message.role === 'assistant' && <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>AI</AvatarFallback></Avatar>}
+                                                                <div className={`max-w-[85%] ${message.role === 'user' ? 'p-3 rounded-lg bg-primary text-primary-foreground dark:bg-slate-700 dark:text-slate-50' : 'p-4 rounded-md bg-muted/50 dark:bg-slate-900/50 border border-border/70 w-full'}`}>
+                                                                    <p className="font-bold mb-2">{displayName}</p>
+                                                                    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{message.content}</ReactMarkdown>
+                                                                </div>
+                                                                {message.role === 'user' && (
+                                                                    <Avatar>
+                                                                        <AvatarImage src={avatarUrl ?? undefined} alt={displayName ?? undefined} />
+                                                                        <AvatarFallback>{avatarFallback}</AvatarFallback>
+                                                                    </Avatar>
+                                                                )}
                                                             </div>
-                                                            {message.role === 'user' && user && <Avatar><AvatarImage src={user.photoURL ?? undefined} alt={user.displayName ?? undefined} /><AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback></Avatar>}
+                                                            <div className={`flex items-center gap-1 mt-2 ${message.role === 'user' ? 'justify-end mr-12' : 'justify-start ml-12'}`}>
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleCopy(message.content)}>
+                                                                            <Clipboard className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent><p>Copy message</p></TooltipContent>
+                                                                </Tooltip>
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleShare}>
+                                                                            <Link className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent><p>Copy chat link</p></TooltipContent>
+                                                                </Tooltip>
+                                                            </div>
                                                         </div>
-                                                        <div className={`flex items-center gap-1 mt-2 ${message.role === 'user' ? 'justify-end mr-12' : 'justify-start ml-12'}`}>
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleCopy(message.content)}>
-                                                                        <Clipboard className="h-4 w-4" />
-                                                                    </Button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent><p>Copy message</p></TooltipContent>
-                                                            </Tooltip>
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleShare}>
-                                                                        <Link className="h-4 w-4" />
-                                                                    </Button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent><p>Copy chat link</p></TooltipContent>
-                                                            </Tooltip>
-                                                        </div>
-                                                    </div>
-                                                ))}
+                                                    );
+                                                })}
                                                 {isLoading && messages.length > 0 && messages[messages.length - 1].role === 'user' && (
                                                     <div className="flex items-center justify-start gap-3 mt-4 ml-12">
                                                         <div className="flex items-start gap-3">
