@@ -26,6 +26,7 @@ export interface CreateChatRequest {
 }
 
 export interface PostMessageRequest {
+    api_key: string;
     content: string;
     role?: 'user' | 'assistant' | 'system';
 }

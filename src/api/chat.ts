@@ -9,7 +9,7 @@ import type {
 } from '@/types/types_chat';
 import { handleResponse } from '@/utils/handleResponse';
 
-const API_BASE_URL = 'https://api.solufuse.com/';
+const API_BASE_URL = 'https://api.solufuse.com';
 
 // --- CHAT API FUNCTIONS ---
 
