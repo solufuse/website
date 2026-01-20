@@ -1,5 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { ResizableBox, ResizableBoxProps } from 'react-resizable';
+import 'react-resizable/css/styles.css';
 import { Button } from "@/components/ui/button";
 import { listFiles, deleteItems, renameItem, downloadItems, uploadFiles, moveItem } from '@/api/files';
 import type { FileInfo, FileTreeNode } from '@/types';
@@ -36,9 +38,15 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
     const [error, setError] = useState<string | null>(null);
     const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
     const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['.']));
-    const [isDraggingFile, setIsDraggingFile] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
     const [draggedItem, setDraggedItem] = useState<FileInfo | null>(null);
     const [dropTarget, setDropTarget] = useState<string | null>(null);
+
+    const [width, setWidth] = useState(() => {
+        if (typeof window === 'undefined') return 400;
+        const savedWidth = localStorage.getItem('fileExplorerWidth');
+        return savedWidth ? parseInt(savedWidth, 10) : 400;
+    });
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -86,9 +94,15 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
         setFileTree([rootNode]);
     }, [allItems, currentProject]);
 
+    const onResizeStop: ResizableBoxProps['onResizeStop'] = (_e, data) => {
+        const newWidth = data.size.width;
+        setWidth(newWidth);
+        localStorage.setItem('fileExplorerWidth', String(newWidth));
+    };
+
     const handleItemClick = (item: FileInfo, e: React.MouseEvent) => {
         const isSelected = selectedPaths.has(item.path);
-        if (e.ctrlKey) {
+        if (e.ctrlKey || e.metaKey) {
             const newSelection = new Set(selectedPaths);
             isSelected ? newSelection.delete(item.path) : newSelection.add(item.path);
             setSelectedPaths(newSelection);
@@ -98,7 +112,11 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
 
         if (item.type === 'folder') {
             const newExpanded = new Set(expandedFolders);
-            expandedFolders.has(item.path) ? newExpanded.delete(item.path) : newExpanded.add(item.path);
+            if (expandedFolders.has(item.path)) {
+                newExpanded.delete(item.path);
+            } else {
+                newExpanded.add(item.path);
+            }
             setExpandedFolders(newExpanded);
         }
     };
@@ -159,88 +177,86 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
         handleUpload: () => fileInputRef.current?.click()
     };
 
-    const handleDragEnter = (e: React.DragEvent) => {
+    const handleDragStart = (item: FileInfo, e: React.DragEvent) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('application/json', JSON.stringify(item));
+        setDraggedItem(item);
+    };
+
+    const handleDragOver = (e: React.DragEvent, item?: FileInfo) => {
         e.preventDefault();
         e.stopPropagation();
-        if (e.dataTransfer.types.includes('Files')) {
-            setIsDraggingFile(true);
+        
+        const isExternal = e.dataTransfer.types.includes('Files');
+        if (isExternal) {
+            setIsDragging(true);
+        }
+
+        if (draggedItem && item && item.type === 'folder' && item.path !== draggedItem.path && !item.path.startsWith(draggedItem.path + '/')) {
+            setDropTarget(item.path);
+        } else if (item && item.type !== 'folder') {
+            setDropTarget(null);
         }
     };
 
     const handleDragLeave = (e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        if (e.currentTarget.contains(e.relatedTarget as Node)) {
+        if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+        setDropTarget(null);
+        setIsDragging(false);
+    };
+
+    const handleDrop = async (e: React.DragEvent, targetItem: FileInfo) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDropTarget(null);
+        setIsDragging(false);
+        
+        if (e.dataTransfer.files.length > 0) {
+            const files = Array.from(e.dataTransfer.files);
+            if (files.length > 0 && projectId) {
+                setIsUploading(true);
+                setError(null);
+                try {
+                    const uploadPath = targetItem.type === 'folder' ? targetItem.path : '.';
+                    await uploadFiles(files, { projectId });
+
+                    if (uploadPath !== '.') {
+                        await Promise.all(files.map(file => 
+                            moveItem(file.name, uploadPath, { projectId })
+                        ));
+                    }
+                    await fetchAllFiles();
+                } catch (err) {
+                    setError(err instanceof Error ? err.message : 'Failed to upload and move files.');
+                } finally {
+                    setIsUploading(false);
+                }
+            }
             return;
         }
-        setIsDraggingFile(false);
-    };
-
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-    };
-
-    const handleExternalDrop = async (e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setIsDraggingFile(false);
-        const files = e.dataTransfer.files;
-        if (files.length > 0 && projectId) {
-            setIsUploading(true);
-            setError(null);
+    
+        const internalDraggedItem = JSON.parse(e.dataTransfer.getData('application/json') || 'null');
+        if (internalDraggedItem) {
+            if (!targetItem || internalDraggedItem.path === targetItem.path || targetItem.type !== 'folder' || targetItem.path.startsWith(internalDraggedItem.path + '/')) {
+                setDraggedItem(null);
+                return;
+            }
+    
             try {
-                // If dropping on a folder, you might want to adapt the upload path
-                await uploadFiles(Array.from(files), { projectId });
+                setLoading(true);
+                await moveItem(internalDraggedItem.path, targetItem.path, { projectId });
+                setExpandedFolders(prev => new Set(prev).add(targetItem.path));
                 await fetchAllFiles();
             } catch (err) {
-                setError(err instanceof Error ? err.message : 'Failed to upload files.');
+                setError(err instanceof Error ? err.message : 'Failed to move item.');
             } finally {
-                setIsUploading(false);
+                setLoading(false);
+                setDraggedItem(null);
             }
         }
     };
-
-    const handleInternalDragStart = (item: FileInfo, e: React.DragEvent) => {
-        e.dataTransfer.effectAllowed = 'move';
-        setDraggedItem(item);
-    };
-
-    const handleInternalDragOver = (item: FileInfo, e: React.DragEvent) => {
-        e.preventDefault();
-        if (draggedItem && item.type === 'folder' && item.path !== draggedItem.path && !item.path.startsWith(draggedItem.path + '/')) {
-            setDropTarget(item.path);
-        }
-    };
-    
-    const handleInternalDragLeave = (e: React.DragEvent) => {
-        e.preventDefault();
-        setDropTarget(null);
-    };
-
-    const handleInternalDrop = async (targetItem: FileInfo, e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setDropTarget(null);
-        if (!draggedItem || !targetItem || draggedItem.path === targetItem.path || targetItem.type !== 'folder' || targetItem.path.startsWith(draggedItem.path + '/')) {
-            setDraggedItem(null);
-            return;
-        }
-
-        try {
-            setLoading(true);
-            await moveItem(draggedItem.path, targetItem.path, { projectId });
-            // Optimistically update the UI or just refetch
-            setExpandedFolders(prev => new Set(prev).add(targetItem.path));
-            await fetchAllFiles();
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to move item.');
-        } finally {
-            setLoading(false);
-            setDraggedItem(null);
-        }
-    };
-
 
     const renderTree = (nodes: FileTreeNode[], level = 0) => {
         return nodes.map(node => (
@@ -253,10 +269,10 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
                     isDropTarget={dropTarget === node.path}
                     onClick={handleItemClick}
                     onContextMenu={handleContextMenu}
-                    onDragStart={handleInternalDragStart}
-                    onDragOver={handleInternalDragOver}
-                    onDragLeave={handleInternalDragLeave}
-                    onDrop={handleInternalDrop}
+                    onDragStart={(node, e) => handleDragStart(node, e)}
+                    onDragOver={(node, e) => handleDragOver(e, node)}
+                    onDragLeave={(e) => handleDragLeave(e)}
+                    onDrop={(node, e) => handleDrop(e, node)}
                 />
                 {expandedFolders.has(node.path) && node.children.length > 0 &&
                     renderTree(node.children, level + 1)
@@ -265,51 +281,64 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
         ));
     };
 
+    if (!isOpen) return null;
+
     return (
-        <div 
-            className={`relative flex flex-col h-full bg-background border-l transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'} ${className}`}
-            onDragEnter={handleDragEnter}
-            onDragLeave={handleDragLeave}
-            onDragOver={handleDragOver}
-            onDrop={handleExternalDrop}
+        <ResizableBox
+            width={width}
+            height={Infinity}
+            axis="x"
+            minConstraints={[250, Infinity]}
+            maxConstraints={[1200, Infinity]}
+            onResizeStop={onResizeStop}
+            handle={<div className="absolute top-0 -left-1 w-2 h-full cursor-col-resize group"><div className="w-full h-full bg-transparent group-hover:bg-primary/20 transition-colors duration-200"></div></div>}
+            className={`relative flex flex-col h-full bg-background border-l ${className}`}
         >
-            <DropZone isDraggingFile={isDraggingFile} />
-            <div className="flex justify-between items-center p-2 border-b">
-                <div className="flex items-center">
-                    <Button variant="ghost" size="icon" onClick={handlers.handleUpload} title="Upload Files">
-                        <Upload className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={handlers.handleRefresh} title="Refresh Files">
-                        <RefreshCw className="h-4 w-4" />
-                    </Button>
-                </div>
-                <h3 className="font-semibold">File Explorer</h3>
-                <Button variant="ghost" size="icon" onClick={onClose} title="Close Panel">
-                    <X className="h-4 w-4" />
-                </Button>
-                <input type="file" ref={fileInputRef} onChange={handleFileUpload} multiple className="hidden" />
-            </div>
-            <div className="flex-1 overflow-y-auto p-2" 
-                 onContextMenu={(e) => handleContextMenu(backgroundFileInfo, e)}
-                 onDrop={(e) => handleInternalDrop(backgroundFileInfo, e)} // Drop on root
-                 onDragOver={(e) => handleInternalDragOver(backgroundFileInfo, e)} // Allow dropping on root
+            <div 
+                className="flex flex-col h-full"
+                onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); }}
+                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, backgroundFileInfo)}
             >
-                {loading && <p className="text-center">Loading file list...</p>}
-                {isUploading && <p className="text-center">Uploading files...</p>}
-                {error && <p className="text-destructive p-2">Error: {error}</p>}
-                {!loading && !error && !isUploading && renderTree(fileTree)}
+                <DropZone isDraggingFile={isDragging} />
+                <div className="flex justify-between items-center p-2 border-b">
+                    <div className="flex items-center">
+                        <Button variant="ghost" size="icon" onClick={handlers.handleUpload} title="Upload Files">
+                            <Upload className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={handlers.handleRefresh} title="Refresh Files">
+                            <RefreshCw className="h-4 w-4" />
+                        </Button>
+                    </div>
+                    <h3 className="font-semibold overflow-hidden text-ellipsis whitespace-nowrap">File Explorer</h3>
+                    <Button variant="ghost" size="icon" onClick={onClose} title="Close Panel">
+                        <X className="h-4 w-4" />
+                    </Button>
+                    <input type="file" ref={fileInputRef} onChange={handleFileUpload} multiple className="hidden" />
+                </div>
+                <div className="flex-1 overflow-y-auto p-2" 
+                    onContextMenu={(e) => handleContextMenu(backgroundFileInfo, e)}
+                    onDragOver={(e) => handleDragOver(e, backgroundFileInfo)}
+                    onDrop={(e) => handleDrop(e, backgroundFileInfo)}
+                >
+                    {loading && <p className="text-center">Loading file list...</p>}
+                    {isUploading && <p className="text-center">Uploading files...</p>}
+                    {error && <p className="text-destructive p-2">Error: {error}</p>}
+                    {!loading && !error && !isUploading && renderTree(fileTree)}
+                </div>
+                <FileContextMenu
+                    isOpen={contextMenu.isOpen}
+                    onOpenChange={(isOpen) => setContextMenu({ ...contextMenu, isOpen })}
+                    position={contextMenu.position}
+                    file={contextMenu.file}
+                    selectedPaths={selectedPaths}
+                    currentProject={currentProject}
+                    projectId={projectId}
+                    handlers={handlers}
+                />
             </div>
-             <FileContextMenu
-                isOpen={contextMenu.isOpen}
-                onOpenChange={(isOpen) => setContextMenu({ ...contextMenu, isOpen })}
-                position={contextMenu.position}
-                file={contextMenu.file}
-                selectedPaths={selectedPaths}
-                currentProject={currentProject}
-                projectId={projectId}
-                handlers={handlers}
-            />
-        </div>
+        </ResizableBox>
     );
 };
 
