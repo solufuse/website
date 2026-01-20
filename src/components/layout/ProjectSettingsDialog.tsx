@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ProjectDetail } from '@/types/types_projects';
+import { deleteProject } from '@/api/projects'; // Import the delete function
 
 interface ProjectSettingsDialogProps {
   isOpen: boolean;
@@ -36,17 +37,27 @@ const ProjectSettingsDialog: React.FC<ProjectSettingsDialogProps> = ({
     setIsDeleting(true);
     setError(null);
     try {
-      // Here you would call your API to delete the project
-      // For example: await deleteProject(project.id);
-      console.log(`Deleting project ${project.name}`);
+      // Call the API to delete the project
+      await deleteProject(project.id);
       onProjectDeleted();
       onClose();
     } catch (err) {
-      setError('Failed to delete project.');
+      const apiError = err instanceof Error ? err.message : 'An unknown error occurred.';
+      setError(`Failed to delete project: ${apiError}`);
+      console.error(err);
     } finally {
       setIsDeleting(false);
     }
   };
+
+  // Reset state when dialog opens
+  React.useEffect(() => {
+    if (isOpen) {
+      setConfirmation('');
+      setError(null);
+      setIsDeleting(false);
+    }
+  }, [isOpen]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -56,7 +67,7 @@ const ProjectSettingsDialog: React.FC<ProjectSettingsDialogProps> = ({
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <p>
-            To delete the project, please type its name below to confirm.
+            To delete the project, type its name <span className="font-bold">{project.name}</span> below to confirm.
           </p>
           <Input
             id="projectName"

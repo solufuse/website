@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -14,31 +14,61 @@ import { createProject } from '@/api/projects';
 interface CreateProjectDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onProjectCreated: (newProjectId: string) => void; // Expects the new project ID
+  onProjectCreated: (newProjectId: string) => void;
 }
 
 const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({ isOpen, onClose, onProjectCreated }) => {
+  const [projectId, setProjectId] = useState('');
   const [projectName, setProjectName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  useEffect(() => {
+    // Reset state when the dialog is closed or opened
+    if (isOpen) {
+      setProjectId('');
+      setProjectName('');
+      setErrors({});
+      setIsLoading(false);
+    }
+  }, [isOpen]);
+
+  const validate = () => {
+    const newErrors: { [key: string]: string } = {};
+    
+    // Project ID validation
+    if (!/^[a-zA-Z0-9_-]{3,20}$/.test(projectId)) {
+      newErrors.projectId = 'ID must be 3-20 characters and can only contain letters, numbers, underscores, and hyphens.';
+    }
+
+    // Project Name validation
+    if (projectName.trim().length < 1 || projectName.trim().length > 20) {
+      newErrors.projectName = 'Name must be between 1 and 20 characters.';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleCreateProject = async () => {
-    if (!projectName.trim()) {
-      setError('Project name cannot be empty.');
+    if (!validate()) {
       return;
     }
 
     setIsLoading(true);
-    setError(null);
+    setErrors({});
 
     try {
-      // The API returns the newly created project, including its ID
-      const newProject = await createProject({ name: projectName.trim(), description: '' });
-      setProjectName('');
-      onProjectCreated(newProject.id); // Pass the new ID to the callback
+      const newProject = await createProject({ 
+        id: projectId, 
+        name: projectName.trim(), 
+        description: '' 
+      });
+      onProjectCreated(newProject.id);
       onClose();
     } catch (err) {
-      setError('Failed to create project. Please try again.');
+      const apiError = err instanceof Error ? err.message : 'An unknown error occurred.';
+      setErrors({ general: `Failed to create project: ${apiError}` });
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -53,13 +83,24 @@ const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({ isOpen, onClo
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <Input
+            id="projectId"
+            placeholder="Project ID (e.g., my-awesome-project)"
+            value={projectId}
+            onChange={(e) => setProjectId(e.target.value)}
+            disabled={isLoading}
+          />
+          {errors.projectId && <p className="text-sm text-red-500">{errors.projectId}</p>}
+          
+          <Input
             id="projectName"
             placeholder="Project name"
             value={projectName}
             onChange={(e) => setProjectName(e.target.value)}
             disabled={isLoading}
           />
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          {errors.projectName && <p className="text-sm text-red-500">{errors.projectName}</p>}
+
+          {errors.general && <p className="text-sm text-red-500">{errors.general}</p>}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isLoading}>
