@@ -8,13 +8,13 @@ import 'katex/dist/katex.min.css';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Bot, FolderOpen, Upload, Clipboard, Link } from 'lucide-react';
+import { Send, Bot, FolderOpen, Upload, Clipboard, Link, XCircle } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import SettingsDialog from '@/components/chat/SettingsDialog';
 import FileExplorer from '@/components/layout/FileExplorer';
 import { useAuthContext } from '@/context/authcontext';
-import { createChat, getChats, postMessage, deleteChat } from '@/api/chat';
+import { createChat, getChats, postMessage, deleteChat, cancelGeneration } from '@/api/chat';
 import { listProjects, getProjectDetails } from '@/api/projects';
 import { uploadFiles } from '@/api/files';
 import { getApiKey } from '@/utils/apiKeyManager';
@@ -219,6 +219,18 @@ const ChatPage: React.FC = () => {
             setIsLoading(false);
         }
     };
+
+    const handleCancelGeneration = async () => {
+        if (activeChatId) {
+            try {
+                await cancelGeneration(activeChatId);
+                alert('Cancellation requested. The AI will stop generating a response shortly.');
+            } catch (error) {
+                console.error("Failed to cancel generation:", error);
+                alert("Sorry, we couldn't cancel the generation.");
+            }
+        }
+    };
     
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const files = event.target.files;
@@ -336,9 +348,22 @@ const ChatPage: React.FC = () => {
                                                     </div>
                                                 ))}
                                                 {isLoading && messages.length > 0 && messages[messages.length - 1].role === 'user' && (
-                                                    <div className="flex items-start gap-3 mt-4">
-                                                        <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>Solufuse</AvatarFallback></Avatar>
-                                                        <div className="p-3 rounded-lg bg-muted/50 dark:bg-slate-900/50 border border-border/70"><p className="font-bold">Solufuse</p><div className="bouncing-dots"><span></span><span></span><span></span></div></div>
+                                                    <div className="flex items-center justify-start gap-3 mt-4 ml-12">
+                                                        <div className="flex items-start gap-3">
+                                                            <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>Solufuse</AvatarFallback></Avatar>
+                                                            <div className="p-3 rounded-lg bg-muted/50 dark:bg-slate-900/50 border border-border/70">
+                                                                <p className="font-bold">Solufuse</p>
+                                                                <div className="bouncing-dots"><span></span><span></span><span></span></div>
+                                                            </div>
+                                                        </div>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleCancelGeneration}>
+                                                                    <XCircle className="h-5 w-5 text-red-500" />
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent><p>Cancel generation</p></TooltipContent>
+                                                        </Tooltip>
                                                     </div>
                                                 )}
                                                 <div ref={messagesEndRef} />

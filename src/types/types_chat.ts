@@ -18,6 +18,7 @@ export interface Chat {
     owner_uid: string;
     created_at: string; // ISO 8601 datetime string
     messages: Message[];
+    is_generation_cancelled?: boolean;
 }
 
 export interface CreateChatRequest {

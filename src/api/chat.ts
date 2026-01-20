@@ -57,6 +57,18 @@ export const postMessage = async (chatId: string, payload: PostMessageRequest): 
     return handleResponse(response);
 };
 
+export const cancelGeneration = async (chatId: string): Promise<{ status: string; message: string; }> => {
+    const token = await getAuthToken();
+    const headers: HeadersInit = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const response = await fetch(`${API_BASE_URL}/chats/${chatId}/cancel`, {
+        method: 'POST',
+        headers,
+    });
+    return handleResponse(response);
+};
+
 export const deleteChat = async (chatId: string): Promise<void> => {
     const token = await getAuthToken();
     const headers: HeadersInit = {};
