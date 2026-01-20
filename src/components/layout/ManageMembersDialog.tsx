@@ -99,7 +99,10 @@ const ManageMembersDialog: React.FC<ManageMembersDialogProps> = ({ isOpen, onClo
     }
   };
 
-  const currentUserIsAdmin = project.members.some(m => m.uid === user?.uid && (m.project_role === ProjectRoleEnum.ADMIN || m.project_role === ProjectRoleEnum.OWNER));
+  const currentUserIsAdmin = project.members.some(m => 
+    m.uid === user?.uid && 
+    (m.project_role.toLowerCase() === 'admin' || m.project_role.toLowerCase() === 'owner')
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -146,7 +149,7 @@ const ManageMembersDialog: React.FC<ManageMembersDialogProps> = ({ isOpen, onClo
                   <Badge variant={roleVariantMap[member.project_role] || 'outline'}>
                     {member.project_role}
                   </Badge>
-                  {currentUserIsAdmin && member.project_role !== ProjectRoleEnum.OWNER && (
+                  {currentUserIsAdmin && member.project_role.toLowerCase() !== 'owner' && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -160,7 +163,10 @@ const ManageMembersDialog: React.FC<ManageMembersDialogProps> = ({ isOpen, onClo
                             <DropdownMenuPortal>
                                 <DropdownMenuSubContent>
                                 {Object.values(ProjectRoleEnum)
-                                    .filter(role => role !== member.project_role && role !== ProjectRoleEnum.OWNER)
+                                    .filter(role => 
+                                        role.toLowerCase() !== member.project_role.toLowerCase() && 
+                                        role.toLowerCase() !== 'owner'
+                                    )
                                     .map(role => (
                                     <DropdownMenuItem key={role} onSelect={() => handleChangeRole(member.uid, role)}>
                                         Set as {role}
