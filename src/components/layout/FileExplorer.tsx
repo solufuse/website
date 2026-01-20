@@ -49,6 +49,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
     });
 
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const resizeStartWidthRef = useRef<number>(0);
 
     const [contextMenu, setContextMenu] = useState<{ isOpen: boolean; position: { x: number, y: number }, file: FileInfo | null }>({
         isOpen: false,
@@ -94,10 +95,31 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
         setFileTree([rootNode]);
     }, [allItems, currentProject]);
 
+    const onResizeStart: ResizableBoxProps['onResizeStart'] = () => {
+        resizeStartWidthRef.current = width;
+    };
+
+    const onResize: ResizableBoxProps['onResize'] = (_e, data) => {
+        const proposedWidth = data.size.width;
+        const initialWidth = resizeStartWidthRef.current;
+        const newWidth = 2 * initialWidth - proposedWidth;
+
+        if (newWidth >= 250 && newWidth <= 1200) { // Keep constraints
+            setWidth(newWidth);
+        }
+    };
+
     const onResizeStop: ResizableBoxProps['onResizeStop'] = (_e, data) => {
-        const newWidth = data.size.width;
-        setWidth(newWidth);
-        localStorage.setItem('fileExplorerWidth', String(newWidth));
+        const proposedWidth = data.size.width;
+        const initialWidth = resizeStartWidthRef.current;
+        let finalWidth = 2 * initialWidth - proposedWidth;
+
+        // Clamp the final value to be safe
+        if (finalWidth < 250) finalWidth = 250;
+        if (finalWidth > 1200) finalWidth = 1200;
+
+        setWidth(finalWidth);
+        localStorage.setItem('fileExplorerWidth', String(finalWidth));
     };
 
     const handleItemClick = (item: FileInfo, e: React.MouseEvent) => {
@@ -288,10 +310,13 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
             width={width}
             height={Infinity}
             axis="x"
+            resizeHandles={['w']} // Use the west handle
             minConstraints={[250, Infinity]}
             maxConstraints={[1200, Infinity]}
+            onResizeStart={onResizeStart}
+            onResize={onResize}
             onResizeStop={onResizeStop}
-            handle={<div className="absolute top-0 -left-1 w-2 h-full cursor-col-resize group"><div className="w-full h-full bg-transparent group-hover:bg-primary/20 transition-colors duration-200"></div></div>}
+            handle={<div className="absolute top-0 -left-1 w-2 h-full cursor-col-resize group z-10"><div className="w-full h-full bg-transparent group-hover:bg-primary/20 transition-colors duration-200"></div></div>}
             className={`relative flex flex-col h-full bg-background border-l ${className}`}
         >
             <div 
