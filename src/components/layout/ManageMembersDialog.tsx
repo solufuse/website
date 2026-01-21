@@ -26,7 +26,7 @@ import { Badge } from '@/components/ui/badge';
 import { roleVariantMap } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { useAuthContext } from '@/context/authcontext';
-import { MoreVertical } from 'lucide-react';
+import { MoreVertical, RefreshCw } from 'lucide-react';
 
 type DetailedProjectMember = ProjectMember;
 
@@ -108,7 +108,12 @@ const ManageMembersDialog: React.FC<ManageMembersDialogProps> = ({ isOpen, onClo
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Manage Members for {project.name}</DialogTitle>
+            <div className="flex items-center justify-between">
+                <DialogTitle>Manage Members for {project.name}</DialogTitle>
+                <Button variant="ghost" size="icon" onClick={onMembersChanged}>
+                    <RefreshCw className="h-4 w-4" />
+                </Button>
+            </div>
           <DialogDescription>
             Invite, remove, and manage roles for project members.
           </DialogDescription>

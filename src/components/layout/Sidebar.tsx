@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { PlusCircle, ChevronsUpDown, PanelLeftClose, Folder, Users, Settings, Check, Trash2, MoreVertical, Link, Filter } from 'lucide-react';
+import { PlusCircle, ChevronsUpDown, PanelLeftClose, Folder, Users, Settings, Check, Trash2, MoreVertical, Link, Filter, RefreshCw } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -129,7 +129,12 @@ const Sidebar: React.FC<SidebarProps> = ({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-64">
-            <DropdownMenuLabel>Projects</DropdownMenuLabel>
+            <DropdownMenuLabel className="flex items-center justify-between">
+                <span>Projects</span>
+                <Button variant="ghost" size="icon" onClick={refreshProjects} className="h-8 w-8">
+                    <RefreshCw className="h-4 w-4" />
+                </Button>
+            </DropdownMenuLabel>
             <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
                     <Filter className="mr-2 h-4 w-4" />
