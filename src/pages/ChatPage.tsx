@@ -1,10 +1,6 @@
 
 import React, { useState, useEffect, useLayoutEffect, useRef, Suspense, lazy } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import ReactMarkdown from 'react-markdown';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
-import 'katex/dist/katex.min.css';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -22,6 +18,7 @@ import type { ProjectMember } from '@/types/types_projects';
 
 const SettingsDialog = lazy(() => import('@/components/chat/SettingsDialog'));
 const FileExplorer = lazy(() => import('@/components/layout/FileExplorer'));
+const MarkdownRenderer = lazy(() => import('@/components/chat/MarkdownRenderer'));
 
 const ChatPage: React.FC = () => {
     const { user, loading: authLoading, loginWithGoogle, logout } = useAuthContext();
@@ -208,7 +205,9 @@ const ChatPage: React.FC = () => {
                                                             {message.role === 'assistant' && <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>AI</AvatarFallback></Avatar>}
                                                             <div className={`max-w-[85%] ${message.role === 'user' ? 'p-3 rounded-lg bg-primary text-primary-foreground dark:bg-slate-700 dark:text-slate-50' : 'p-4 rounded-md bg-muted/50 dark:bg-slate-900/50 border border-border/70'}`}>
                                                                 <p className="font-bold mb-2">{displayName}</p>
-                                                                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{message.content}</ReactMarkdown>
+                                                                <Suspense fallback={<div>Loading markdown...</div>}>
+                                                                    <MarkdownRenderer content={message.content} />
+                                                                </Suspense>
                                                             </div>
                                                             {message.role === 'user' && (
                                                                 <Avatar>
