@@ -27,12 +27,12 @@ interface ProjectContextType {
   currentProject: ProjectDetail | null;   
   isLoading: boolean;
   error: string | null;
-  filterAccessLevel: AccessLevel | null; // <-- ADDED FILTER STATE
-  setAccessLevelFilter: (level: AccessLevel | null) => void; // <-- ADDED FILTER SETTER
-  refreshProjects: () => void;
+  filterAccessLevel: AccessLevel | null; 
+  setAccessLevelFilter: (level: AccessLevel | null) => void; 
+  refreshProjects: () => Promise<void>;
   addProject: (payload: ProjectCreatePayload) => Promise<void>;
   removeProject: (projectId: string) => Promise<void>;
-  setCurrentProjectById: (projectId: string | null) => void; 
+  setCurrentProjectById: (projectId: string | null, forceRefresh?: boolean) => Promise<void>; 
   inviteMember: (payload: MemberInvitePayload) => Promise<void>;
   removeMember: (targetUid: string) => Promise<void>;
   updateMemberRole: (targetUid: string, role: ProjectRoleEnum) => Promise<void>;
@@ -70,18 +70,16 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       setFilterAccessLevel(level);
   };
 
-  const refreshProjects = useCallback(() => {
-    fetchProjects(filterAccessLevel);
-  }, [fetchProjects, filterAccessLevel]);
-
-  const setCurrentProjectById = useCallback(async (projectId: string | null) => {
+  const setCurrentProjectById = useCallback(async (projectId: string | null, forceRefresh = false) => {
     if (!projectId) {
         setCurrentProject(null);
         localStorage.removeItem('lastProjectId');
         return;
     }
 
-    if (currentProject?.id === projectId) return;
+    if (currentProject?.id === projectId && !forceRefresh) {
+        return;
+    }
 
     setIsLoading(true);
     try {
@@ -96,47 +94,48 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     setIsLoading(false);
   }, [currentProject?.id]);
 
+  const refreshProjects = useCallback(async () => {
+    await fetchProjects(filterAccessLevel);
+    if (currentProject) {
+      await setCurrentProjectById(currentProject.id, true);
+    }
+  }, [fetchProjects, filterAccessLevel, currentProject?.id, setCurrentProjectById]);
+
   const addProject = async (payload: ProjectCreatePayload) => {
     await createProject(payload);
-    refreshProjects();
+    await refreshProjects();
   };
 
   const removeProject = async (projectId: string) => {
     await deleteProject(projectId);
     if (currentProject?.id === projectId) {
-        setCurrentProjectById(null);
+        await setCurrentProjectById(null);
     }
-    refreshProjects();
+    await refreshProjects();
   };
 
   const inviteMember = async (payload: MemberInvitePayload) => {
     if (!currentProject) return;
     await inviteOrUpdateMember(currentProject.id, payload);
-    await setCurrentProjectById(currentProject.id); // Refresh details
+    await setCurrentProjectById(currentProject.id, true);
   };
 
   const removeMember = async (targetUid: string) => {
     if (!currentProject) return;
     await kickMember(currentProject.id, targetUid);
-    setCurrentProject(prev => prev ? { ...prev, members: prev.members.filter(m => m.uid !== targetUid) } : null);
+    await setCurrentProjectById(currentProject.id, true);
   };
 
   const updateMemberRole = async (targetUid: string, role: ProjectRoleEnum) => {
     if (!currentProject) return;
     await inviteOrUpdateMember(currentProject.id, { user_id: targetUid, role });
-    setCurrentProject(prev => {
-        if (!prev) return null;
-        return {
-            ...prev,
-            members: prev.members.map(m => m.uid === targetUid ? { ...m, project_role: role } : m)
-        };
-    });
+    await setCurrentProjectById(currentProject.id, true);
   };
 
   const updateProjectVisibility = async (visibility: 'public' | 'private') => {
     if (!currentProject) return;
     await setProjectVisibility(currentProject.id, visibility);
-    setCurrentProject(prev => prev ? { ...prev, visibility } : null);
+    await setCurrentProjectById(currentProject.id, true);
   };
 
   useEffect(() => {
@@ -159,8 +158,8 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     currentProject,
     isLoading,
     error,
-    filterAccessLevel, // <-- EXPORTED
-    setAccessLevelFilter, // <-- EXPORTED
+    filterAccessLevel,
+    setAccessLevelFilter,
     refreshProjects,
     addProject,
     removeProject,
