@@ -31,6 +31,7 @@ export interface PostMessageRequest {
     api_key: string;
     content: string;
     role?: 'user' | 'assistant' | 'system';
+    model_name?: string;
 }
 
 export interface DeleteMessageRequest {

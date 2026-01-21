@@ -17,7 +17,7 @@ import { useAuthContext } from '@/context/authcontext';
 import { useProjectContext } from '@/context/ProjectContext'; // <-- IMPORT PROJECT CONTEXT
 import { createChat, getChats, postMessage, deleteChat, cancelGeneration } from '@/api/chat';
 import { uploadFiles } from '@/api/files';
-import { getApiKey } from '@/utils/apiKeyManager';
+import { getApiKey, getModelName } from '@/utils/apiKeyManager';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Chat, Message } from '@/types/types_chat';
@@ -131,6 +131,7 @@ const ChatPage: React.FC = () => {
         if (!input.trim() || !currentProject) return;
         const apiKey = getApiKey();
         if (!apiKey) { alert('Please add your API key in settings.'); setIsSettingsOpen(true); return; }
+        const modelName = getModelName() || 'gemini-3-flash-preview';
 
         let currentChatId = activeChatId;
         if (!currentChatId) {
@@ -164,7 +165,7 @@ const ChatPage: React.FC = () => {
         setIsLoading(true);
 
         try {
-            await postMessage(currentChatId, { content: userInput, api_key: apiKey });
+            await postMessage(currentChatId, { content: userInput, api_key: apiKey, model_name: modelName });
             const updatedChats = await getChats(currentProject.id);
             setChats(updatedChats);
         } catch (error) {

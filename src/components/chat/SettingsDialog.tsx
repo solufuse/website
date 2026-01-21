@@ -3,6 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -10,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { getApiKey, saveApiKey } from '@/utils/apiKeyManager'; // Import the new functions
+import { getApiKey, saveApiKey, getModelName, saveModelName } from '@/utils/apiKeyManager';
 import { ModeToggle } from './ModeToggle';
 
 interface SettingsDialogProps {
@@ -20,19 +27,25 @@ interface SettingsDialogProps {
 
 const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose }) => {
   const [apiKeyInput, setApiKeyInput] = useState('');
+  const [selectedModel, setSelectedModel] = useState('gemini-3-flash-preview');
 
   useEffect(() => {
     if (isOpen) {
-      const storedKey = getApiKey(); // Use the getter to load the key
+      const storedKey = getApiKey();
       if (storedKey) {
         setApiKeyInput(storedKey);
+      }
+      const storedModel = getModelName();
+      if (storedModel) {
+        setSelectedModel(storedModel);
       }
     }
   }, [isOpen]);
 
   const handleSave = () => {
-    saveApiKey(apiKeyInput); // Use the setter to save the key
-    alert('API Key saved!');
+    saveApiKey(apiKeyInput);
+    saveModelName(selectedModel);
+    alert('Settings saved!');
     onClose();
   };
 
@@ -60,6 +73,21 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose }) => {
             />
             <p className='text-xs text-muted-foreground mt-2'>You can get your API key from <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener noreferrer" className='underline'>https://aistudio.google.com/api-keys</a>.</p>
           </div>
+
+          <div>
+            <label htmlFor="ai-model" className="text-sm font-medium">
+              AI Model
+            </label>
+            <Select value={selectedModel} onValueChange={setSelectedModel}>
+              <SelectTrigger id="ai-model" className="mt-2">
+                <SelectValue placeholder="Select a model" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="gemini-3-pro-preview">gemini-3-pro-preview</SelectItem>
+                <SelectItem value="gemini-3-flash-preview">gemini-3-flash-preview</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Theme</span>
@@ -77,4 +105,3 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose }) => {
 };
 
 export default SettingsDialog;
-
