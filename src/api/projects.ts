@@ -4,7 +4,8 @@ import type {
     PaginatedProjectListResponse,
     ProjectCreatePayload,
     MemberInvitePayload,
-    ProjectDetail
+    ProjectDetail,
+    ProjectListDetail
 } from '@/types/types_projects';
 import { handleResponse } from '@/utils/handleResponse';
 
@@ -14,14 +15,21 @@ const API_BASE_URL = 'https://api.solufuse.com';
 
 /**
  * Provides a lightweight list of all projects accessible to the user.
+ * @param accessLevel Optional filter to get projects by a specific access level.
  * @returns A promise that resolves with the paginated project list response.
  */
-export const listProjects = async (): Promise<PaginatedProjectListResponse> => {
+export const listProjects = async (accessLevel?: ProjectListDetail['access_level']): Promise<PaginatedProjectListResponse> => {
     const token = await getAuthToken();
     const headers: HeadersInit = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const response = await fetch(`${API_BASE_URL}/projects/list`, { headers });
+    let url = `${API_BASE_URL}/projects/list`;
+    if (accessLevel) {
+        const params = new URLSearchParams({ accessLevel });
+        url += `?${params.toString()}`;
+    }
+
+    const response = await fetch(url, { headers });
     return handleResponse(response);
 };
 
@@ -53,6 +61,25 @@ export const createProject = async (payload: ProjectCreatePayload): Promise<{ st
         method: 'POST',
         headers,
         body: JSON.stringify(payload),
+    });
+    return handleResponse(response);
+};
+
+/**
+ * Sets the visibility of a project.
+ * @param projectId The ID of the project.
+ * @param visibility The new visibility setting ('public' or 'private').
+ * @returns A promise that resolves with the status, project ID, and new visibility.
+ */
+export const setProjectVisibility = async (projectId: string, visibility: 'public' | 'private'): Promise<{ status: string; project_id: string; visibility: string; }> => {
+    const token = await getAuthToken();
+    const headers: HeadersInit = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const response = await fetch(`${API_BASE_URL}/projects/${projectId}/visibility`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ visibility }),
     });
     return handleResponse(response);
 };

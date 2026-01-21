@@ -6,7 +6,6 @@
 // [+] Export all role-related and project-related types for external consumption
 export * from './types_roles';
 export * from './types_projects';
-export type { ProjectSearchResult as Project } from './types_projects'; // Alias for backward compatibility
 
 
 // [+] Import types needed for declarations within this file's scope, to fix resolution errors.

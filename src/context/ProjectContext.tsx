@@ -1,11 +1,11 @@
 
 import React, { createContext, useState, useContext, ReactNode, useMemo, useEffect, useCallback } from 'react';
 import {
-    ProjectListDetail, // Use the lightweight version for the main list
-    ProjectDetail,       // Use the detailed version for the current project
+    ProjectListDetail, 
+    ProjectDetail,       
     ProjectCreatePayload,
     MemberInvitePayload,
-    ProjectRoleEnum, // <-- IMPORT ENUM
+    ProjectRoleEnum, 
 } from '@/types/types_projects';
 import {
     getProjectDetails,
@@ -13,9 +13,13 @@ import {
     deleteProject,
     inviteOrUpdateMember,
     kickMember,
-    listProjects
+    listProjects,
+    setProjectVisibility
 } from '@/api/projects';
 import { useAuthContext } from './authcontext';
+
+// --- TYPE DEFINITIONS ---
+type AccessLevel = ProjectListDetail['access_level'];
 
 // --- CONTEXT SHAPE ---
 interface ProjectContextType {
@@ -23,14 +27,16 @@ interface ProjectContextType {
   currentProject: ProjectDetail | null;   
   isLoading: boolean;
   error: string | null;
+  filterAccessLevel: AccessLevel | null; // <-- ADDED FILTER STATE
+  setAccessLevelFilter: (level: AccessLevel | null) => void; // <-- ADDED FILTER SETTER
   refreshProjects: () => void;
   addProject: (payload: ProjectCreatePayload) => Promise<void>;
   removeProject: (projectId: string) => Promise<void>;
   setCurrentProjectById: (projectId: string | null) => void; 
   inviteMember: (payload: MemberInvitePayload) => Promise<void>;
   removeMember: (targetUid: string) => Promise<void>;
-  // UPDATED to use ProjectRoleEnum
-  updateMemberRole: (targetUid: string, role: ProjectRoleEnum) => Promise<void>; 
+  updateMemberRole: (targetUid: string, role: ProjectRoleEnum) => Promise<void>;
+  updateProjectVisibility: (visibility: 'public' | 'private') => Promise<void>; 
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -43,13 +49,14 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [currentProject, setCurrentProject] = useState<ProjectDetail | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [filterAccessLevel, setFilterAccessLevel] = useState<AccessLevel | null>(null);
 
-  const fetchProjects = useCallback(async () => {
+  const fetchProjects = useCallback(async (accessLevel: AccessLevel | null) => {
     if (authIsLoading || !user) return;
     setIsLoading(true);
     setError(null);
     try {
-        const response = await listProjects();
+        const response = await listProjects(accessLevel ?? undefined);
         setProjects(response.projects);
     } catch (err: any) {
         setError(err.message);
@@ -59,7 +66,13 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     setIsLoading(false);
   }, [user, authIsLoading]);
 
-  const refreshProjects = useCallback(() => { fetchProjects(); }, [fetchProjects]);
+  const setAccessLevelFilter = (level: AccessLevel | null) => {
+      setFilterAccessLevel(level);
+  };
+
+  const refreshProjects = useCallback(() => {
+    fetchProjects(filterAccessLevel);
+  }, [fetchProjects, filterAccessLevel]);
 
   const setCurrentProjectById = useCallback(async (projectId: string | null) => {
     if (!projectId) {
@@ -99,7 +112,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
   const inviteMember = async (payload: MemberInvitePayload) => {
     if (!currentProject) return;
     await inviteOrUpdateMember(currentProject.id, payload);
-    await setCurrentProjectById(currentProject.id);
+    await setCurrentProjectById(currentProject.id); // Refresh details
   };
 
   const removeMember = async (targetUid: string) => {
@@ -108,13 +121,10 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     setCurrentProject(prev => prev ? { ...prev, members: prev.members.filter(m => m.uid !== targetUid) } : null);
   };
 
-  // UPDATED to use ProjectRoleEnum and the correct payload field
   const updateMemberRole = async (targetUid: string, role: ProjectRoleEnum) => {
     if (!currentProject) return;
-    // Corrected payload to use 'user_id' instead of 'uid'
     await inviteOrUpdateMember(currentProject.id, { user_id: targetUid, role });
-    // Optimistic update
-     setCurrentProject(prev => {
+    setCurrentProject(prev => {
         if (!prev) return null;
         return {
             ...prev,
@@ -123,11 +133,17 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     });
   };
 
+  const updateProjectVisibility = async (visibility: 'public' | 'private') => {
+    if (!currentProject) return;
+    await setProjectVisibility(currentProject.id, visibility);
+    setCurrentProject(prev => prev ? { ...prev, visibility } : null);
+  };
+
   useEffect(() => {
     if (user && !authIsLoading) {
-        fetchProjects();
+        fetchProjects(filterAccessLevel);
     }
-  }, [user, authIsLoading, fetchProjects]);
+  }, [user, authIsLoading, fetchProjects, filterAccessLevel]);
 
   useEffect(() => {
     if (projects.length > 0 && !currentProject) {
@@ -143,17 +159,20 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     currentProject,
     isLoading,
     error,
+    filterAccessLevel, // <-- EXPORTED
+    setAccessLevelFilter, // <-- EXPORTED
     refreshProjects,
     addProject,
     removeProject,
     setCurrentProjectById,
     inviteMember,
     removeMember,
-    updateMemberRole
+    updateMemberRole,
+    updateProjectVisibility
   }), [
-    projects, currentProject, isLoading, error,
+    projects, currentProject, isLoading, error, filterAccessLevel,
     refreshProjects, addProject, removeProject, setCurrentProjectById, 
-    inviteMember, removeMember, updateMemberRole
+    inviteMember, removeMember, updateMemberRole, updateProjectVisibility
   ]);
 
   return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;

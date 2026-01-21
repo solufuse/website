@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { createProject } from '@/api/projects';
+import type { ProjectCreatePayload } from '@/types/types_projects';
 
 interface CreateProjectDialogProps {
   isOpen: boolean;
@@ -59,11 +60,11 @@ const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({ isOpen, onClo
     setErrors({});
 
     try {
-      const newProject = await createProject({ 
-        id: projectId, 
-        name: projectName.trim(), 
-        description: '' 
-      });
+        const payload: ProjectCreatePayload = {
+            name: projectName.trim(),
+            description: ''
+        };
+      const newProject = await createProject(payload);
       onProjectCreated(newProject.id);
       onClose();
     } catch (err) {

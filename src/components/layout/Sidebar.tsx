@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { PlusCircle, ChevronsUpDown, PanelLeftClose, Folder, Users, Settings, Check, Trash2, MoreVertical, Link } from 'lucide-react';
+import { PlusCircle, ChevronsUpDown, PanelLeftClose, Folder, Users, Settings, Check, Trash2, MoreVertical, Link, Filter } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,21 +10,26 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
   DropdownMenuLabel,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal
 } from '@/components/ui/dropdown-menu';
 import CreateProjectDialog from './CreateProjectDialog';
 import ManageMembersDialog from './ManageMembersDialog';
-import ProjectSettingsDialog from './ProjectSettingsDialog'; // Import the new dialog
+import ProjectSettingsDialog from './ProjectSettingsDialog';
 import { useAuthContext } from '@/context/authcontext';
+import { useProjectContext } from '@/context/ProjectContext';
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { ProjectDetail, ProjectListDetail } from '@/types/types_projects';
 
 interface Conversation {
   id: string;
   name: string;
 }
 
+// --- PROPS --- (Simplified)
 interface SidebarProps {
   conversations: Conversation[];
   activeConversationId: string | null;
@@ -31,14 +37,8 @@ interface SidebarProps {
   onNewConversation: () => void;
   onConversationSelect: (id: string) => void;
   onDeleteConversation: (id: string) => void;
-  projects: ProjectListDetail[];
-  currentProject: ProjectDetail | null;
-  onProjectSelect: (id: string) => void;
   isSidebarOpen: boolean;
   onToggleSidebar: () => void;
-  onProjectCreated: (newProjectId: string) => void;
-  onMembersChanged: () => void;
-  onProjectDeleted: () => void; // Add prop for project deletion
 }
 
 const roleVariantMap: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -60,22 +60,44 @@ const Sidebar: React.FC<SidebarProps> = ({
   onNewConversation,
   onConversationSelect,
   onDeleteConversation,
-  projects,
-  currentProject,
-  onProjectSelect,
   isSidebarOpen,
   onToggleSidebar,
-  onProjectCreated,
-  onMembersChanged,
-  onProjectDeleted, // Destructure the new prop
 }) => {
   const { user } = useAuthContext();
+  const {
+      projects,
+      currentProject,
+      setCurrentProjectById,
+      filterAccessLevel,
+      setAccessLevelFilter,
+      refreshProjects,
+      removeProject,
+  } = useProjectContext();
+  const navigate = useNavigate();
+
   const [isCreateProjectDialogOpen, setCreateProjectDialogOpen] = useState(false);
   const [isManageMembersDialogOpen, setManageMembersDialogOpen] = useState(false);
-  const [isProjectSettingsDialogOpen, setProjectSettingsDialogOpen] = useState(false); // State for the new dialog
+  const [isProjectSettingsDialogOpen, setProjectSettingsDialogOpen] = useState(false);
 
   const currentUserProjectRole = currentProject?.members.find(m => m.uid === user?.uid)?.project_role;
   const globalRole = user?.global_role;
+
+  const handleProjectSelect = (id: string) => {
+      setCurrentProjectById(id);
+      navigate(`/chats/${id}`);
+  }
+
+  const handleProjectCreated = (newProjectId: string) => {
+    refreshProjects();
+    handleProjectSelect(newProjectId);
+  };
+
+  const handleProjectDeleted = () => {
+    if (currentProject) {
+        removeProject(currentProject.id);
+        navigate('/');
+    }
+  };
 
   const handleCopyLink = (conversationId: string) => {
     if (currentProject) {
@@ -106,15 +128,44 @@ const Sidebar: React.FC<SidebarProps> = ({
               <ChevronsUpDown className={`h-4 w-4 shrink-0 opacity-50 ${isSidebarOpen ? 'ml-2' : 'mx-auto'}`} />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56">
+          <DropdownMenuContent className="w-64">
             <DropdownMenuLabel>Projects</DropdownMenuLabel>
-            {projects.map((project) => (
-               <DropdownMenuItem key={project.id} onSelect={() => onProjectSelect(project.id)}>
-                  <Folder className="mr-2 h-4 w-4" />
-                  <span>{project.name}</span>
-                  {currentProject?.id === project.id && <Check className="ml-auto h-4 w-4" />}
-               </DropdownMenuItem>
-            ))}
+            <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                    <Filter className="mr-2 h-4 w-4" />
+                    <span>Filter by: {filterAccessLevel || 'All'}</span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuPortal>
+                    <DropdownMenuSubContent>
+                        <DropdownMenuItem onSelect={() => setAccessLevelFilter(null)}>
+                            <span>All</span>
+                            {filterAccessLevel === null && <Check className="ml-auto h-4 w-4" />}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => setAccessLevelFilter('owner')}>
+                            <span>Owner</span>
+                            {filterAccessLevel === 'owner' && <Check className="ml-auto h-4 w-4" />}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => setAccessLevelFilter('member')}>
+                            <span>Member</span>
+                            {filterAccessLevel === 'member' && <Check className="ml-auto h-4 w-4" />}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => setAccessLevelFilter('public')}>
+                            <span>Public</span>
+                            {filterAccessLevel === 'public' && <Check className="ml-auto h-4 w-4" />}
+                        </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                </DropdownMenuPortal>
+            </DropdownMenuSub>
+            <DropdownMenuSeparator />
+            <ScrollArea style={{maxHeight: '200px'}}>
+                {projects.map((project) => (
+                   <DropdownMenuItem key={project.id} onSelect={() => handleProjectSelect(project.id)}>
+                      <Folder className="mr-2 h-4 w-4" />
+                      <span>{project.name}</span>
+                      {currentProject?.id === project.id && <Check className="ml-auto h-4 w-4" />}
+                   </DropdownMenuItem>
+                ))}
+            </ScrollArea>
             <DropdownMenuSeparator />
              <DropdownMenuItem onSelect={() => setCreateProjectDialogOpen(true)}>
               <PlusCircle className="mr-2 h-4 w-4" />
@@ -135,7 +186,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         <Tooltip>
             <TooltipTrigger asChild>
-                <Button onClick={onNewConversation} disabled={isCreatingChat} className="w-full">
+                <Button onClick={onNewConversation} disabled={isCreatingChat || !currentProject} className="w-full">
                     {isSidebarOpen ? (
                         isCreatingChat ? 'Creating...' : <><PlusCircle className="mr-2 h-4 w-4" /> New Chat</>
                     ) : (
@@ -221,14 +272,14 @@ const Sidebar: React.FC<SidebarProps> = ({
         </nav>
       </ScrollArea>
       
-      <CreateProjectDialog isOpen={isCreateProjectDialogOpen} onClose={() => setCreateProjectDialogOpen(false)} onProjectCreated={onProjectCreated} />
-      {currentProject && <ManageMembersDialog isOpen={isManageMembersDialogOpen} onClose={() => setManageMembersDialogOpen(false)} project={currentProject} onMembersChanged={onMembersChanged} />}
+      <CreateProjectDialog isOpen={isCreateProjectDialogOpen} onClose={() => setCreateProjectDialogOpen(false)} onProjectCreated={handleProjectCreated} />
+      {currentProject && <ManageMembersDialog isOpen={isManageMembersDialogOpen} onClose={() => setManageMembersDialogOpen(false)} project={currentProject} onMembersChanged={refreshProjects} />}
       {currentProject && (
         <ProjectSettingsDialog
           isOpen={isProjectSettingsDialogOpen}
           onClose={() => setProjectSettingsDialogOpen(false)}
           project={currentProject}
-          onProjectDeleted={onProjectDeleted}
+          onProjectDeleted={handleProjectDeleted}
         />
       )}
     </div>

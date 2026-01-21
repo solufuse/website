@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
@@ -14,17 +14,22 @@ import Header from '@/components/layout/Header';
 import SettingsDialog from '@/components/chat/SettingsDialog';
 import FileExplorer from '@/components/layout/FileExplorer';
 import { useAuthContext } from '@/context/authcontext';
+import { useProjectContext } from '@/context/ProjectContext'; // <-- IMPORT PROJECT CONTEXT
 import { createChat, getChats, postMessage, deleteChat, cancelGeneration } from '@/api/chat';
-import { listProjects, getProjectDetails } from '@/api/projects';
 import { uploadFiles } from '@/api/files';
 import { getApiKey } from '@/utils/apiKeyManager';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Chat, Message } from '@/types/types_chat';
-import type { ProjectListDetail, ProjectDetail, ProjectMember } from '@/types/types_projects';
+import type { ProjectMember } from '@/types/types_projects';
 
 const ChatPage: React.FC = () => {
     const { user, loading: authLoading, loginWithGoogle, logout } = useAuthContext();
+    const { 
+        currentProject, 
+        setCurrentProjectById 
+    } = useProjectContext(); // <-- USE PROJECT CONTEXT
+
     const { projectId, chatId } = useParams<{ projectId?: string, chatId?: string }>();
     const navigate = useNavigate();
 
@@ -37,12 +42,6 @@ const ChatPage: React.FC = () => {
     const [isFileExplorerOpen, setFileExplorerOpen] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [fileExplorerKey, setFileExplorerKey] = useState(Date.now());
-    
-    const [projects, setProjects] = useState<ProjectListDetail[]>([]);
-    const [currentProject, setCurrentProject] = useState<ProjectDetail | null>(null);
-    const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
-        return projectId || localStorage.getItem('lastProjectId');
-    });
 
     const messagesEndRef = useRef<null | HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -59,29 +58,15 @@ const ChatPage: React.FC = () => {
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
     }
-    
-    const fetchProjects = useCallback(async () => {
-        if (user) {
-            const response = await listProjects();
-            setProjects(response.projects);
-            return response.projects;
-        }
-        return [];
-    }, [user]);
-
-    const fetchProjectDetails = useCallback(async (id: string) => {
-        if (user) {
-            const details = await getProjectDetails(id);
-            setCurrentProject(details);
-            localStorage.setItem('lastProjectId', id);
-        }
-    }, [user]);
 
     useEffect(() => {
         if (projectId) {
-            setSelectedProjectId(projectId);
+            setCurrentProjectById(projectId);
+        } else {
+            const lastProjectId = localStorage.getItem('lastProjectId');
+            if(lastProjectId) setCurrentProjectById(lastProjectId);
         }
-    }, [projectId]);
+    }, [projectId, setCurrentProjectById]);
 
     useEffect(() => {
         setActiveChatId(chatId ?? null);
@@ -94,30 +79,24 @@ const ChatPage: React.FC = () => {
     }, [chats, activeChatId]);
 
     useEffect(() => {
-        fetchProjects();
-    }, [fetchProjects]);
-
-    useEffect(() => {
-        if (selectedProjectId) {
-            fetchProjectDetails(selectedProjectId);
-            getChats(selectedProjectId).then(setChats);
+        if (currentProject) {
+            getChats(currentProject.id).then(setChats);
         } else {
-            setCurrentProject(null);
             setChats([]);
         }
-    }, [selectedProjectId, fetchProjectDetails]);
+    }, [currentProject]);
 
     const handleNewConversation = async () => {
         if (!user) { loginWithGoogle(); return; }
-        if (!selectedProjectId) { alert("Please select a project first."); return; }
+        if (!currentProject) { alert("Please select a project first."); return; }
         const apiKey = getApiKey();
         if (!apiKey) { alert('Please add your API key in settings.'); setIsSettingsOpen(true); return; }
 
         setIsCreatingChat(true);
         try {
-            const newChat = await createChat(selectedProjectId, { title: "New Chat", api_key: apiKey });
+            const newChat = await createChat(currentProject.id, { title: "New Chat", api_key: apiKey });
             setChats(prev => [...prev, newChat]);
-            navigate(`/chats/${selectedProjectId}/${newChat.short_id}`);
+            navigate(`/chats/${currentProject.id}/${newChat.short_id}`);
         } catch (error) {
             console.error("Failed to create chat:", error);
             alert("Sorry, we couldn't create a new chat.");
@@ -127,8 +106,8 @@ const ChatPage: React.FC = () => {
     };
 
     const handleConversationSelect = (id: string) => {
-        if (selectedProjectId) {
-            navigate(`/chats/${selectedProjectId}/${id}`);
+        if (currentProject) {
+            navigate(`/chats/${currentProject.id}/${id}`);
         }
     };
 
@@ -140,7 +119,7 @@ const ChatPage: React.FC = () => {
             await deleteChat(id);
             setChats(prev => prev.filter(chat => chat.short_id !== id));
             if (activeChatId === id) {
-                navigate(selectedProjectId ? `/chats/${selectedProjectId}` : '/');
+                navigate(currentProject ? `/chats/${currentProject.id}` : '/');
             }
         } catch (error) {
             console.error("Failed to delete chat:", error);
@@ -148,37 +127,8 @@ const ChatPage: React.FC = () => {
         }
     };
 
-    const handleProjectSelect = (id: string) => {
-        setSelectedProjectId(id);
-        navigate(`/chats/${id}`);
-    }
-
-    const handleProjectCreated = async (newProjectId: string) => {
-        await fetchProjects();
-        handleProjectSelect(newProjectId);
-    };
-
-    const handleMembersChanged = async () => {
-        if (selectedProjectId) {
-            await fetchProjectDetails(selectedProjectId);
-        }
-    };
-
-    const handleProjectDeleted = async () => {
-        if (currentProject) {
-            // In a real app, you would call an API to delete the project here.
-            // e.g., await deleteProject(currentProject.id);
-        }
-        alert('Project deleted successfully.');
-        setCurrentProject(null);
-        setSelectedProjectId(null);
-        localStorage.removeItem('lastProjectId');
-        navigate('/');
-        await fetchProjects();
-    };
-
     const handleSend = async () => {
-        if (!input.trim() || !selectedProjectId) return;
+        if (!input.trim() || !currentProject) return;
         const apiKey = getApiKey();
         if (!apiKey) { alert('Please add your API key in settings.'); setIsSettingsOpen(true); return; }
 
@@ -186,9 +136,9 @@ const ChatPage: React.FC = () => {
         if (!currentChatId) {
             setIsLoading(true);
             try {
-                const newChat = await createChat(selectedProjectId, { title: input.substring(0, 20) || "New Chat", api_key: apiKey });
+                const newChat = await createChat(currentProject.id, { title: input.substring(0, 20) || "New Chat", api_key: apiKey });
                 setChats(prev => [...prev, newChat]);
-                navigate(`/chats/${selectedProjectId}/${newChat.short_id}`, { replace: true });
+                navigate(`/chats/${currentProject.id}/${newChat.short_id}`, { replace: true });
                 currentChatId = newChat.short_id;
             } catch (error) {
                 console.error("Failed to create chat:", error);
@@ -215,7 +165,7 @@ const ChatPage: React.FC = () => {
 
         try {
             await postMessage(currentChatId, { content: userInput, api_key: apiKey });
-            const updatedChats = await getChats(selectedProjectId);
+            const updatedChats = await getChats(currentProject.id);
             setChats(updatedChats);
         } catch (error) {
             console.error("Failed to send message:", error);
@@ -242,9 +192,9 @@ const ChatPage: React.FC = () => {
     
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const files = event.target.files;
-        if (files && files.length > 0 && selectedProjectId) {
+        if (files && files.length > 0 && currentProject) {
             try {
-                await uploadFiles(Array.from(files), { projectId: selectedProjectId });
+                await uploadFiles(Array.from(files), { projectId: currentProject.id });
                 setFileExplorerKey(Date.now());
                 alert('Files uploaded successfully!');
             } catch (error) {
@@ -268,8 +218,8 @@ const ChatPage: React.FC = () => {
     };
     
     const handleShare = () => {
-        if (selectedProjectId && activeChatId) {
-            const link = `${window.location.origin}/chats/${selectedProjectId}/${activeChatId}`;
+        if (currentProject && activeChatId) {
+            const link = `${window.location.origin}/chats/${currentProject.id}/${activeChatId}`;
             navigator.clipboard.writeText(link);
             alert('Chat link copied to clipboard!');
         }
@@ -298,12 +248,6 @@ const ChatPage: React.FC = () => {
                 onNewConversation={handleNewConversation}
                 onConversationSelect={handleConversationSelect}
                 onDeleteConversation={handleDeleteConversation}
-                projects={projects}
-                currentProject={currentProject}
-                onProjectSelect={handleProjectSelect}
-                onProjectCreated={handleProjectCreated}
-                onMembersChanged={handleMembersChanged}
-                onProjectDeleted={handleProjectDeleted}
             />
             <div className="flex flex-1 flex-col overflow-hidden">
                 <Header
@@ -426,12 +370,12 @@ const ChatPage: React.FC = () => {
                             </div>
                         </footer>
                     </div>
-                    {selectedProjectId && 
+                    {currentProject && 
                         <FileExplorer 
                             refreshTrigger={fileExplorerKey}
                             isOpen={isFileExplorerOpen} 
                             onClose={() => setFileExplorerOpen(false)} 
-                            projectId={selectedProjectId} 
+                            projectId={currentProject.id} 
                             currentProject={currentProject}
                         />
                     }
