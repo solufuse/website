@@ -56,7 +56,7 @@ const ChatPage: React.FC = () => {
     }, [input]);
 
     const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
 
     useEffect(() => {
