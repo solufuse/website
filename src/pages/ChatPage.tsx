@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, Suspense, lazy } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
@@ -11,8 +11,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Send, Bot, FolderOpen, Upload, Clipboard, Link, XCircle, AlertTriangle } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
-import SettingsDialog from '@/components/chat/SettingsDialog';
-import FileExplorer from '@/components/layout/FileExplorer';
 import { useAuthContext } from '@/context/authcontext';
 import { useProjectContext } from '@/context/ProjectContext';
 import { useChatContext } from '@/context/ChatContext';
@@ -21,6 +19,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Message } from '@/types/types_chat';
 import type { ProjectMember } from '@/types/types_projects';
+
+const SettingsDialog = lazy(() => import('@/components/chat/SettingsDialog'));
+const FileExplorer = lazy(() => import('@/components/layout/FileExplorer'));
 
 const ChatPage: React.FC = () => {
     const { user, loading: authLoading, loginWithGoogle, logout } = useAuthContext();
@@ -54,7 +55,6 @@ const ChatPage: React.FC = () => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-    // Auto-resize textarea
     useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
@@ -63,7 +63,6 @@ const ChatPage: React.FC = () => {
         }
     }, [input]);
 
-    // Project and Chat loading logic
     useEffect(() => {
         if (projectId) {
             setCurrentProjectById(projectId);
@@ -79,8 +78,6 @@ const ChatPage: React.FC = () => {
         } 
     }, [currentProject, loadChats]);
 
-
-    // Auto-scrolling logic
     const scrollToBottom = (behavior: "smooth" | "auto" = "smooth") => {
         messagesEndRef.current?.scrollIntoView({ behavior });
     }
@@ -96,7 +93,6 @@ const ChatPage: React.FC = () => {
         }
     }, [activeChat, isLoading]);
 
-    // Event Handlers
     const handleSend = async () => {
         if (!input.trim()) return;
         await sendMessage(input);
@@ -147,7 +143,6 @@ const ChatPage: React.FC = () => {
         }
     };
 
-    // Render Logic
     if (authLoading) {
         return <div className="flex h-screen w-full items-center justify-center"><p>Loading...</p></div>;
     }
@@ -274,7 +269,7 @@ const ChatPage: React.FC = () => {
                                 <div className="flex justify-center mb-2 space-x-2">
                                     <Button onClick={() => fileInputRef.current?.click()} disabled={!currentProject} variant="outline"><Upload className="h-4 w-4 mr-2" />Upload File</Button>
                                     <input type="file" ref={fileInputRef} onChange={handleFileUpload} multiple className="hidden" />
-                                    <Button onClick={() => setFileExplorerOpen(!isFileExplorerOpen)} disabled={!currentProject} variant="outline"><FolderOpen className="h-4 w-4 mr-2" />Browse Files</Button>
+                                    <Button onClick={() => setFileExplorerOpen(true)} disabled={!currentProject} variant="outline"><FolderOpen className="h-4 w-4 mr-2" />Browse Files</Button>
                                 </div>
                                 <div className="relative flex w-full items-end space-x-2 p-2 rounded-lg bg-muted">
                                     <Textarea
@@ -296,18 +291,22 @@ const ChatPage: React.FC = () => {
                             </div>
                         </footer>
                     </div>
-                    {currentProject && 
-                        <FileExplorer 
-                            refreshTrigger={fileExplorerKey}
-                            isOpen={isFileExplorerOpen} 
-                            onClose={() => setFileExplorerOpen(false)} 
-                            projectId={currentProject.id} 
-                            currentProject={currentProject}
-                        />
-                    }
+                    <Suspense fallback={<div>Loading...</div>}>
+                        {currentProject && isFileExplorerOpen &&
+                            <FileExplorer 
+                                refreshTrigger={fileExplorerKey}
+                                isOpen={isFileExplorerOpen} 
+                                onClose={() => setFileExplorerOpen(false)} 
+                                projectId={currentProject.id} 
+                                currentProject={currentProject}
+                            />
+                        }
+                    </Suspense>
                 </div>
             </div>
-            <SettingsDialog isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+            <Suspense fallback={<div>Loading...</div>}>
+                {isSettingsOpen && <SettingsDialog isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />}
+            </Suspense>
         </div>
     );
 };
