@@ -123,3 +123,23 @@
         background-color: transparent;
     }
 }
+
+table {
+    @apply w-full my-4 border-collapse border border-border;
+}
+
+thead {
+    @apply bg-muted;
+}
+
+th, td {
+    @apply border border-border p-2 text-left;
+}
+
+th {
+    @apply font-semibold;
+}
+
+tbody tr:nth-child(even) {
+    @apply bg-muted/50;
+}
