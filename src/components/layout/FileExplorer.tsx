@@ -11,6 +11,7 @@ import FileNode from './FileNode';
 import FileContextMenu from './FileContextMenu';
 import { X, Upload, RefreshCw } from 'lucide-react';
 import { DropZone } from './DropZone';
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 interface FileExplorerProps {
     isOpen: boolean;
@@ -372,14 +373,16 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
                     </Button>
                     <input type="file" ref={fileInputRef} onChange={handleFileUpload} multiple className="hidden" />
                 </div>
-                <div className="flex-1 overflow-y-auto p-2" 
-                    onContextMenu={(e) => handleContextMenu(backgroundFileInfo, e)}
-                >
-                    {loading && <p className="text-center">Loading file list...</p>}
-                    {isUploading && <p className="text-center">Uploading files...</p>}
-                    {error && <p className="text-destructive p-2">Error: {error}</p>}
-                    {!loading && !error && !isUploading && renderTree(fileTree)}
-                </div>
+                <ScrollArea className="flex-1">
+                    <div className="p-2 h-full" onContextMenu={(e) => handleContextMenu(backgroundFileInfo, e)}>
+                        {loading && <p className="text-center">Loading file list...</p>}
+                        {isUploading && <p className="text-center">Uploading files...</p>}
+                        {error && <p className="text-destructive p-2">Error: {error}</p>}
+                        {!loading && !error && !isUploading && renderTree(fileTree)}
+                    </div>
+                    <ScrollBar orientation="vertical" />
+                    <ScrollBar orientation="horizontal" />
+                </ScrollArea>
                 <FileContextMenu
                     isOpen={contextMenu.isOpen}
                     onOpenChange={(isOpen) => setContextMenu({ ...contextMenu, isOpen })}
