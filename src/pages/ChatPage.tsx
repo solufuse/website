@@ -14,7 +14,7 @@ import Header from '@/components/layout/Header';
 import SettingsDialog from '@/components/chat/SettingsDialog';
 import FileExplorer from '@/components/layout/FileExplorer';
 import { useAuthContext } from '@/context/authcontext';
-import { useProjectContext } from '@/context/ProjectContext'; // <-- IMPORT PROJECT CONTEXT
+import { useProjectContext } from '@/context/ProjectContext';
 import { createChat, getChats, postMessage, deleteChat, cancelGeneration } from '@/api/chat';
 import { uploadFiles } from '@/api/files';
 import { getApiKey, getModelName } from '@/utils/apiKeyManager';
@@ -28,7 +28,7 @@ const ChatPage: React.FC = () => {
     const { 
         currentProject, 
         setCurrentProjectById 
-    } = useProjectContext(); // <-- USE PROJECT CONTEXT
+    } = useProjectContext();
 
     const { projectId, chatId } = useParams<{ projectId?: string, chatId?: string }>();
     const navigate = useNavigate();
@@ -43,6 +43,7 @@ const ChatPage: React.FC = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [fileExplorerKey, setFileExplorerKey] = useState(Date.now());
 
+    const scrollAreaRef = useRef<HTMLDivElement>(null);
     const messagesEndRef = useRef<null | HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -55,8 +56,8 @@ const ChatPage: React.FC = () => {
         }
     }, [input]);
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const scrollToBottom = (behavior: "smooth" | "auto" = "smooth") => {
+        messagesEndRef.current?.scrollIntoView({ behavior });
     }
 
     useEffect(() => {
@@ -73,18 +74,27 @@ const ChatPage: React.FC = () => {
     }, [chatId]);
 
     useLayoutEffect(() => {
-        setTimeout(() => {
-            scrollToBottom();
-        }, 0);
-    }, [chats, activeChatId]);
+        const scrollContainer = scrollAreaRef.current?.querySelector('div[data-radix-scroll-area-viewport]');
+        if (!scrollContainer) return;
+
+        const isAtBottom = scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < 1;
+
+        if (isAtBottom) {
+            setTimeout(() => scrollToBottom('smooth'), 100);
+        } 
+    }, [chats, activeChatId, isLoading]);
 
     useEffect(() => {
         if (currentProject) {
-            getChats(currentProject.id).then(setChats);
+            getChats(currentProject.id).then(loadedChats => {
+                setChats(loadedChats);
+                setTimeout(() => scrollToBottom('auto'), 0); 
+            });
         } else {
             setChats([]);
         }
-    }, [currentProject]);
+    }, [currentProject?.id]);
+
 
     const handleNewConversation = async () => {
         if (!user) { loginWithGoogle(); return; }
@@ -160,7 +170,14 @@ const ChatPage: React.FC = () => {
             timestamp: new Date().toISOString(),
             user_id: user?.uid
         };
-        setChats(prev => prev.map(chat => chat.short_id === currentChatId ? { ...chat, messages: [...chat.messages, newMessage] } : chat));
+        
+        setChats(prev => prev.map(chat => {
+            if (chat.short_id === currentChatId) {
+                const messages = chat.messages ? [...chat.messages, newMessage] : [newMessage];
+                return { ...chat, messages };
+            }
+            return chat;
+        }));
         setInput('');
         setIsLoading(true);
 
@@ -260,7 +277,7 @@ const ChatPage: React.FC = () => {
                 />
                 <div className="flex flex-1 overflow-hidden">
                     <div className="flex flex-1 flex-col min-w-0">
-                        <ScrollArea className="flex-1">
+                        <ScrollArea className="flex-1" ref={scrollAreaRef}>
                             <main className="p-4">
                             <TooltipProvider>
                                 <div className="max-w-4xl mx-auto">
