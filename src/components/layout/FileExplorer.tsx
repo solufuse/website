@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ResizableBox, ResizableBoxProps } from 'react-resizable';
 import 'react-resizable/css/styles.css';
 import { Button } from "@/components/ui/button";
-import { listFiles, deleteItems, renameItem, downloadItems, uploadFiles, moveItem } from '@/api/files';
+import { listFiles, deleteItems, renameItem, downloadItems, uploadFiles, moveItem, createFolder, createFile } from '@/api/files';
 import type { FileInfo, FileTreeNode } from '@/types';
 import type { ProjectDetail } from '@/types/types_projects';
 import { buildFileTree } from '@/utils/fileTree'; 
@@ -150,8 +150,32 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ isOpen, onClose, projectId,
     };
     
     const handlers = {
-        handleNewFile: (path: string) => alert(`New file in: ${path}`),
-        handleNewFolder: (path: string) => alert(`New folder in: ${path}`),
+        handleNewFile: async (path: string) => {
+            const filename = prompt('Enter file name:');
+            if (filename) {
+                const newPath = path === '.' ? filename : `${path}/${filename}`;
+                try {
+                    await createFile(newPath, { projectId });
+                    await fetchAllFiles();
+                    // Optionally, open the new file for editing
+                } catch (err) {
+                    setError(err instanceof Error ? err.message : 'Failed to create file.');
+                }
+            }
+        },
+        handleNewFolder: async (path: string) => {
+            const folderName = prompt('Enter folder name:');
+            if (folderName) {
+                const newPath = path === '.' ? folderName : `${path}/${folderName}`;
+                try {
+                    await createFolder(newPath, { projectId });
+                    await fetchAllFiles();
+                    setExpandedFolders(prev => new Set(prev).add(path)); // Auto-expand parent
+                } catch (err) {
+                    setError(err instanceof Error ? err.message : 'Failed to create folder.');
+                }
+            }
+        },
         handleBulkDownload: async () => {
             if (selectedPaths.size > 0) {
                await downloadItems(Array.from(selectedPaths), { projectId });
