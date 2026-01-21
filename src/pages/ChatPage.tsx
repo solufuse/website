@@ -37,8 +37,8 @@ const ChatPage: React.FC = () => {
         cancelGeneration,
         setActiveChatId
     } = useChatContext();
-    
-    const { projectId } = useParams<{ projectId?: string }>();
+
+    const { projectId, messageId } = useParams<{ projectId?: string; chatId?: string; messageId?: string }>();
     const navigate = useNavigate();
 
     const [input, setInput] = useState('');
@@ -51,6 +51,8 @@ const ChatPage: React.FC = () => {
     const messagesEndRef = useRef<null | HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
 
     useEffect(() => {
         if (textareaRef.current) {
@@ -72,14 +74,32 @@ const ChatPage: React.FC = () => {
     useEffect(() => {
         if (currentProject) {
             loadChats(currentProject.id);
-        } 
+        }
     }, [currentProject, loadChats]);
+
+    useEffect(() => {
+    if (messageId && messageRefs.current.has(messageId)) {
+        const messageElement = messageRefs.current.get(messageId);
+        if (messageElement) {
+            setTimeout(() => {
+                messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                messageElement.classList.add('highlight');
+                setTimeout(() => {
+                    messageElement.classList.remove('highlight');
+                }, 2000); // Highlight for 2 seconds
+            }, 100);
+        }
+    }
+}, [messageId, activeChat]);
+
 
     const scrollToBottom = (behavior: "smooth" | "auto" = "smooth") => {
         messagesEndRef.current?.scrollIntoView({ behavior });
     }
 
     useLayoutEffect(() => {
+        if (messageId) return; 
+
         const scrollContainer = scrollAreaRef.current?.querySelector('div[data-radix-scroll-area-viewport]');
         if (!scrollContainer) return;
 
@@ -88,7 +108,7 @@ const ChatPage: React.FC = () => {
         if (isAtBottom) {
             setTimeout(() => scrollToBottom('smooth'), 100);
         }
-    }, [activeChat, isLoading]);
+    }, [activeChat, isLoading, messageId]);
 
     const handleSend = async () => {
         if (!input.trim()) return;
@@ -131,14 +151,18 @@ const ChatPage: React.FC = () => {
     const handleCopy = (content: string) => {
         navigator.clipboard.writeText(content);
     };
-    
-    const handleShare = () => {
+
+    const handleShare = (messageId?: string) => {
         if (currentProject && activeChatId) {
-            const link = `${window.location.origin}/chats/${currentProject.id}/${activeChatId}`;
+            let link = `${window.location.origin}/chats/${currentProject.id}/${activeChatId}`;
+            if (messageId) {
+                link += `/${messageId}`;
+            }
             navigator.clipboard.writeText(link);
-            alert('Chat link copied to clipboard!');
+            alert('Link copied to clipboard!');
         }
     };
+
 
     if (authLoading) {
         return <div className="flex h-screen w-full items-center justify-center"><p>Loading...</p></div>;
@@ -200,7 +224,13 @@ const ChatPage: React.FC = () => {
                                                 const avatarFallback = displayName?.charAt(0).toUpperCase() || 'U';
 
                                                 return (
-                                                    <div key={message.id}>
+                                                    <div key={message.id} ref={el => {
+                                                        if (el) {
+                                                            messageRefs.current.set(message.id, el);
+                                                        } else {
+                                                            messageRefs.current.delete(message.id);
+                                                        }
+                                                    }}>
                                                         <div className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
                                                             {message.role === 'assistant' && <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>AI</AvatarFallback></Avatar>}
                                                             <div className={`max-w-[85%] ${message.role === 'user' ? 'p-3 rounded-lg bg-primary text-primary-foreground dark:bg-slate-700 dark:text-slate-50' : 'p-4 rounded-md bg-muted/50 dark:bg-slate-900/50 border border-border/70'}`}>
@@ -227,11 +257,11 @@ const ChatPage: React.FC = () => {
                                                             </Tooltip>
                                                             <Tooltip>
                                                                 <TooltipTrigger asChild>
-                                                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleShare}>
+                                                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleShare(message.id)}>
                                                                         <Link className="h-4 w-4" />
                                                                     </Button>
                                                                 </TooltipTrigger>
-                                                                <TooltipContent><p>Copy chat link</p></TooltipContent>
+                                                                <TooltipContent><p>Copy message link</p></TooltipContent>
                                                             </Tooltip>
                                                         </div>
                                                     </div>
@@ -292,11 +322,11 @@ const ChatPage: React.FC = () => {
                     </div>
                     <Suspense fallback={<div>Loading...</div>}>
                         {currentProject && isFileExplorerOpen &&
-                            <FileExplorer 
+                            <FileExplorer
                                 refreshTrigger={fileExplorerKey}
-                                isOpen={isFileExplorerOpen} 
-                                onClose={() => setFileExplorerOpen(false)} 
-                                projectId={currentProject.id} 
+                                isOpen={isFileExplorerOpen}
+                                onClose={() => setFileExplorerOpen(false)}
+                                projectId={currentProject.id}
                                 currentProject={currentProject}
                             />
                         }
