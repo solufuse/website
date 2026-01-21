@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -8,36 +8,42 @@ import 'katex/dist/katex.min.css';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Bot, FolderOpen, Upload, Clipboard, Link, XCircle } from 'lucide-react';
+import { Send, Bot, FolderOpen, Upload, Clipboard, Link, XCircle, AlertTriangle } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import SettingsDialog from '@/components/chat/SettingsDialog';
 import FileExplorer from '@/components/layout/FileExplorer';
 import { useAuthContext } from '@/context/authcontext';
 import { useProjectContext } from '@/context/ProjectContext';
-import { createChat, getChats, postMessage, deleteChat, cancelGeneration } from '@/api/chat';
+import { useChatContext } from '@/context/ChatContext';
 import { uploadFiles } from '@/api/files';
-import { getApiKey, getModelName } from '@/utils/apiKeyManager';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import type { Chat, Message } from '@/types/types_chat';
+import type { Message } from '@/types/types_chat';
 import type { ProjectMember } from '@/types/types_projects';
 
 const ChatPage: React.FC = () => {
     const { user, loading: authLoading, loginWithGoogle, logout } = useAuthContext();
-    const { 
-        currentProject, 
-        setCurrentProjectById 
-    } = useProjectContext();
-
-    const { projectId, chatId } = useParams<{ projectId?: string, chatId?: string }>();
+    const { currentProject, setCurrentProjectById } = useProjectContext();
+    const {
+        chats,
+        activeChat,
+        activeChatId,
+        isLoading,
+        isCreatingChat,
+        error,
+        loadChats,
+        createChat,
+        deleteChat,
+        sendMessage,
+        cancelGeneration,
+        setActiveChatId
+    } = useChatContext();
+    
+    const { projectId } = useParams<{ projectId?: string }>();
     const navigate = useNavigate();
 
     const [input, setInput] = useState('');
-    const [chats, setChats] = useState<Chat[]>([]);
-    const [activeChatId, setActiveChatId] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const [isCreatingChat, setIsCreatingChat] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isFileExplorerOpen, setFileExplorerOpen] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -48,6 +54,7 @@ const ChatPage: React.FC = () => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+    // Auto-resize textarea
     useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
@@ -56,10 +63,7 @@ const ChatPage: React.FC = () => {
         }
     }, [input]);
 
-    const scrollToBottom = (behavior: "smooth" | "auto" = "smooth") => {
-        messagesEndRef.current?.scrollIntoView({ behavior });
-    }
-
+    // Project and Chat loading logic
     useEffect(() => {
         if (projectId) {
             setCurrentProjectById(projectId);
@@ -70,8 +74,16 @@ const ChatPage: React.FC = () => {
     }, [projectId, setCurrentProjectById]);
 
     useEffect(() => {
-        setActiveChatId(chatId ?? null);
-    }, [chatId]);
+        if (currentProject) {
+            loadChats(currentProject.id);
+        } 
+    }, [currentProject, loadChats]);
+
+
+    // Auto-scrolling logic
+    const scrollToBottom = (behavior: "smooth" | "auto" = "smooth") => {
+        messagesEndRef.current?.scrollIntoView({ behavior });
+    }
 
     useLayoutEffect(() => {
         const scrollContainer = scrollAreaRef.current?.querySelector('div[data-radix-scroll-area-viewport]');
@@ -81,133 +93,27 @@ const ChatPage: React.FC = () => {
 
         if (isAtBottom) {
             setTimeout(() => scrollToBottom('smooth'), 100);
-        } 
-    }, [chats, activeChatId, isLoading]);
-
-    useEffect(() => {
-        if (currentProject) {
-            getChats(currentProject.id).then(loadedChats => {
-                setChats(loadedChats);
-                setTimeout(() => scrollToBottom('auto'), 0); 
-            });
-        } else {
-            setChats([]);
         }
-    }, [currentProject?.id]);
+    }, [activeChat, isLoading]);
 
+    // Event Handlers
+    const handleSend = async () => {
+        if (!input.trim()) return;
+        await sendMessage(input);
+        setInput('');
+    };
 
     const handleNewConversation = async () => {
-        if (!user) { loginWithGoogle(); return; }
-        if (!currentProject) { alert("Please select a project first."); return; }
-        const apiKey = getApiKey();
-        if (!apiKey) { alert('Please add your API key in settings.'); setIsSettingsOpen(true); return; }
-
-        setIsCreatingChat(true);
-        try {
-            const newChat = await createChat(currentProject.id, { title: "New Chat", api_key: apiKey });
-            setChats(prev => [...prev, newChat]);
-            navigate(`/chats/${currentProject.id}/${newChat.short_id}`);
-        } catch (error) {
-            console.error("Failed to create chat:", error);
-            alert("Sorry, we couldn't create a new chat.");
-        } finally {
-            setIsCreatingChat(false);
-        }
+        await createChat();
     };
 
     const handleConversationSelect = (id: string) => {
         if (currentProject) {
             navigate(`/chats/${currentProject.id}/${id}`);
+            setActiveChatId(id)
         }
     };
 
-    const handleDeleteConversation = async (id: string) => {
-        const apiKey = getApiKey();
-        if (!apiKey) { alert('Please add your API key in settings.'); setIsSettingsOpen(true); return; }
-        
-        try {
-            await deleteChat(id);
-            setChats(prev => prev.filter(chat => chat.short_id !== id));
-            if (activeChatId === id) {
-                navigate(currentProject ? `/chats/${currentProject.id}` : '/');
-            }
-        } catch (error) {
-            console.error("Failed to delete chat:", error);
-            alert("Sorry, we couldn't delete this chat.");
-        }
-    };
-
-    const handleSend = async () => {
-        if (!input.trim() || !currentProject) return;
-        const apiKey = getApiKey();
-        if (!apiKey) { alert('Please add your API key in settings.'); setIsSettingsOpen(true); return; }
-        const modelName = getModelName() || 'gemini-3-flash-preview';
-
-        let currentChatId = activeChatId;
-        if (!currentChatId) {
-            setIsLoading(true);
-            try {
-                const newChat = await createChat(currentProject.id, { title: input.substring(0, 20) || "New Chat", api_key: apiKey });
-                setChats(prev => [...prev, newChat]);
-                navigate(`/chats/${currentProject.id}/${newChat.short_id}`, { replace: true });
-                currentChatId = newChat.short_id;
-            } catch (error) {
-                console.error("Failed to create chat:", error);
-                alert("Sorry, we couldn't create a new chat.");
-                setIsLoading(false);
-                return;
-            }
-        }
-
-        if (!currentChatId) return;
-
-        const userInput = input;
-        const tempMessageId = `temp-${Date.now()}`;
-        const newMessage: Message = { 
-            id: tempMessageId, 
-            content: userInput, 
-            role: 'user', 
-            timestamp: new Date().toISOString(),
-            user_id: user?.uid
-        };
-        
-        setChats(prev => prev.map(chat => {
-            if (chat.short_id === currentChatId) {
-                const messages = chat.messages ? [...chat.messages, newMessage] : [newMessage];
-                return { ...chat, messages };
-            }
-            return chat;
-        }));
-        setInput('');
-        setIsLoading(true);
-
-        try {
-            await postMessage(currentChatId, { content: userInput, api_key: apiKey, model_name: modelName });
-            const updatedChats = await getChats(currentProject.id);
-            setChats(updatedChats);
-        } catch (error) {
-            console.error("Failed to send message:", error);
-            const errorMsg = error instanceof Error ? error.message : 'An unknown error occurred.';
-            const errorId = `error-${Date.now()}`;
-            const errorMessage: Message = { id: errorId, content: `Error: ${errorMsg}`, role: 'assistant', timestamp: new Date().toISOString() };
-            setChats(prev => prev.map(chat => chat.short_id === currentChatId ? { ...chat, messages: [...chat.messages, errorMessage] } : chat));
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleCancelGeneration = async () => {
-        if (activeChatId) {
-            try {
-                await cancelGeneration(activeChatId);
-                alert('Cancellation requested. The AI will stop generating a response shortly.');
-            } catch (error) {
-                console.error("Failed to cancel generation:", error);
-                alert("Sorry, we couldn't cancel the generation.");
-            }
-        }
-    };
-    
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const files = event.target.files;
         if (files && files.length > 0 && currentProject) {
@@ -230,9 +136,7 @@ const ChatPage: React.FC = () => {
     };
 
     const handleCopy = (content: string) => {
-        const isFormula = content.startsWith('$') && content.endsWith('$');
-        const textToCopy = isFormula ? `**${content}**` : content;
-        navigator.clipboard.writeText(textToCopy);
+        navigator.clipboard.writeText(content);
     };
     
     const handleShare = () => {
@@ -243,11 +147,11 @@ const ChatPage: React.FC = () => {
         }
     };
 
+    // Render Logic
     if (authLoading) {
         return <div className="flex h-screen w-full items-center justify-center"><p>Loading...</p></div>;
     }
 
-    const activeChat = chats.find(c => c.short_id === activeChatId);
     const messages = activeChat ? activeChat.messages : [];
 
     const getMessageAuthor = (message: Message): ProjectMember | null => {
@@ -265,7 +169,7 @@ const ChatPage: React.FC = () => {
                 isCreatingChat={isCreatingChat}
                 onNewConversation={handleNewConversation}
                 onConversationSelect={handleConversationSelect}
-                onDeleteConversation={handleDeleteConversation}
+                onDeleteConversation={deleteChat}
             />
             <div className="flex flex-1 flex-col overflow-hidden">
                 <Header
@@ -281,80 +185,84 @@ const ChatPage: React.FC = () => {
                             <main className="p-4">
                             <TooltipProvider>
                                 <div className="max-w-4xl mx-auto">
+                                    {error && (
+                                        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4" role="alert">
+                                            <p className="font-bold flex items-center"><AlertTriangle className="h-5 w-5 mr-2"/>Error</p>
+                                            <p>{error}</p>
+                                        </div>
+                                    )}
                                     {!currentProject ? (
-                                        <div className="flex flex-col items-center justify-center">
-                                            <Bot size={72} /><p className="text-2xl mt-4">Welcome to Solufuse</p><p className='mt-2'>Please select a project to start.</p>
+                                         <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)]">
+                                            <Bot size={72} /><p className="text-2xl mt-4">Welcome to Solufuse</p><p className='mt-2'>Please select or create a project to begin.</p>
                                         </div>
                                     ) : !activeChatId ? (
-                                        <div className="flex flex-col items-center justify-center">
-                                            <Bot size={72} /><p className="text-2xl mt-4">How can I help you today?</p><p className='mt-2'>Type your message below to start a new chat.</p>
+                                        <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)]">
+                                            <Bot size={72} /><p className="text-2xl mt-4">How can I help you today?</p><p className='mt-2'>Select a chat or start a new one.</p>
                                         </div>
                                     ) : (
-                                        <div className="flex flex-col">
-                                            <div className="space-y-6">
-                                                {messages.map((message) => {
-                                                    const author = getMessageAuthor(message);
-                                                    const displayName = author?.username || (message.role === 'user' ? 'You' : 'Solufuse');
-                                                    const avatarUrl = author?.avatar_url || (message.role === 'user' && user ? user.photoURL : undefined);
-                                                    const avatarFallback = displayName?.charAt(0).toUpperCase() || 'U';
+                                        <div className="space-y-6">
+                                            {messages.map((message) => {
+                                                const author = getMessageAuthor(message);
+                                                const displayName = author?.username || (message.role === 'user' ? 'You' : 'Solufuse');
+                                                const avatarUrl = author?.avatar_url || (message.role === 'user' && user ? user.photoURL : undefined);
+                                                const avatarFallback = displayName?.charAt(0).toUpperCase() || 'U';
 
-                                                    return (
-                                                        <div key={message.id}>
-                                                            <div className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
-                                                                {message.role === 'assistant' && <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>AI</AvatarFallback></Avatar>}
-                                                                <div className={`max-w-[85%] ${message.role === 'user' ? 'p-3 rounded-lg bg-primary text-primary-foreground dark:bg-slate-700 dark:text-slate-50' : 'p-4 rounded-md bg-muted/50 dark:bg-slate-900/50 border border-border/70'}`}>
-                                                                    <p className="font-bold mb-2">{displayName}</p>
-                                                                    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{message.content}</ReactMarkdown>
-                                                                </div>
-                                                                {message.role === 'user' && (
-                                                                    <Avatar>
-                                                                        <AvatarImage src={avatarUrl ?? undefined} alt={displayName ?? undefined} />
-                                                                        <AvatarFallback>{avatarFallback}</AvatarFallback>
-                                                                    </Avatar>
-                                                                )}
+                                                return (
+                                                    <div key={message.id}>
+                                                        <div className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
+                                                            {message.role === 'assistant' && <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>AI</AvatarFallback></Avatar>}
+                                                            <div className={`max-w-[85%] ${message.role === 'user' ? 'p-3 rounded-lg bg-primary text-primary-foreground dark:bg-slate-700 dark:text-slate-50' : 'p-4 rounded-md bg-muted/50 dark:bg-slate-900/50 border border-border/70'}`}>
+                                                                <p className="font-bold mb-2">{displayName}</p>
+                                                                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{message.content}</ReactMarkdown>
                                                             </div>
-                                                            <div className={`flex items-center gap-1 mt-2 ${message.role === 'user' ? 'justify-end mr-12' : 'justify-start ml-12'}`}>
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleCopy(message.content)}>
-                                                                            <Clipboard className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent><p>Copy message</p></TooltipContent>
-                                                                </Tooltip>
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleShare}>
-                                                                            <Link className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent><p>Copy chat link</p></TooltipContent>
-                                                                </Tooltip>
-                                                            </div>
+                                                            {message.role === 'user' && (
+                                                                <Avatar>
+                                                                    <AvatarImage src={avatarUrl ?? undefined} alt={displayName ?? undefined} />
+                                                                    <AvatarFallback>{avatarFallback}</AvatarFallback>
+                                                                </Avatar>
+                                                            )}
                                                         </div>
-                                                    );
-                                                })}
-                                                {isLoading && messages.length > 0 && messages[messages.length - 1].role === 'user' && (
-                                                    <div className="flex items-center justify-start gap-3 mt-4 ml-12">
-                                                        <div className="flex items-start gap-3">
-                                                            <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>Solufuse</AvatarFallback></Avatar>
-                                                            <div className="p-3 rounded-lg bg-muted/50 dark:bg-slate-900/50 border border-border/70">
-                                                                <p className="font-bold">Solufuse</p>
-                                                                <div className="bouncing-dots"><span></span><span></span><span></span></div>
-                                                            </div>
+                                                        <div className={`flex items-center gap-1 mt-2 ${message.role === 'user' ? 'justify-end mr-12' : 'justify-start ml-12'}`}>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleCopy(message.content)}>
+                                                                        <Clipboard className="h-4 w-4" />
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent><p>Copy message</p></TooltipContent>
+                                                            </Tooltip>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleShare}>
+                                                                        <Link className="h-4 w-4" />
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent><p>Copy chat link</p></TooltipContent>
+                                                            </Tooltip>
                                                         </div>
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleCancelGeneration}>
-                                                                    <XCircle className="h-5 w-5 text-red-500" />
-                                                                </Button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent><p>Cancel generation</p></TooltipContent>
-                                                        </Tooltip>
                                                     </div>
-                                                )}
-                                                <div ref={messagesEndRef} />
-                                            </div>
+                                                );
+                                            })}
+                                            {isLoading && (
+                                                <div className="flex items-center justify-start gap-3 mt-4 ml-12">
+                                                    <div className="flex items-start gap-3">
+                                                        <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>AI</AvatarFallback></Avatar>
+                                                        <div className="p-3 rounded-lg bg-muted/50 dark:bg-slate-900/50 border border-border/70">
+                                                            <p className="font-bold">Solufuse</p>
+                                                            <div className="bouncing-dots"><span></span><span></span><span></span></div>
+                                                        </div>
+                                                    </div>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={cancelGeneration}>
+                                                                <XCircle className="h-5 w-5 text-red-500" />
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent><p>Cancel generation</p></TooltipContent>
+                                                    </Tooltip>
+                                                </div>
+                                            )}
+                                            <div ref={messagesEndRef} />
                                         </div>
                                     )}
                                 </div>
@@ -372,7 +280,7 @@ const ChatPage: React.FC = () => {
                                     <Textarea
                                         ref={textareaRef}
                                         id="message"
-                                        placeholder={currentProject ? "Type your message... (Shift+Enter for new line)" : "Please select a project first"}
+                                        placeholder={!currentProject ? "Please select a project to start." : !activeChatId ? "Type a message to start a new chat..." : "Type your message..."}
                                         className="flex-1 bg-transparent border-none focus:ring-0 focus:outline-none resize-none overflow-y-auto max-h-48 text-base leading-6 pr-12"
                                         autoComplete="off"
                                         value={input}
@@ -381,7 +289,7 @@ const ChatPage: React.FC = () => {
                                         disabled={!currentProject || isLoading}
                                         rows={1}
                                     />
-                                    <Button type="submit" size="icon" onClick={handleSend} disabled={!input.trim() || !currentProject || isLoading} className="rounded-full absolute bottom-4 right-4">
+                                    <Button type="submit" size="icon" onClick={handleSend} disabled={!input.trim() || isLoading} className="rounded-full absolute bottom-4 right-4">
                                         <Send className={isSidebarOpen ? "h-4 w-4" : "h-5 w-5"} /><span className="sr-only">Send</span>
                                     </Button>
                                 </div>
