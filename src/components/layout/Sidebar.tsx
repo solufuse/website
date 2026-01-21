@@ -227,7 +227,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                         className={`group relative flex items-center justify-between w-full px-3 py-2 text-sm font-medium rounded-md ${conversation.id === activeConversationId ? 'bg-muted text-primary' : 'text-muted-foreground hover:bg-muted'} ${!isSidebarOpen && 'justify-center'}`}>
                         
                         <span className={`flex-1 truncate min-w-0 ${!isSidebarOpen && 'hidden'}`}>
-                            {conversation.name.length > 25 ? `${conversation.name.substring(0, 30)}...` : conversation.name}
+                            {conversation.name.length > 25 ? `${conversation.name.substring(0, 25)}...` : conversation.name}
                         </span>
                         
                         {isSidebarOpen && (
