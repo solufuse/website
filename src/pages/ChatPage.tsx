@@ -100,13 +100,6 @@ const ChatPage: React.FC = () => {
     const scrollToBottom = (behavior: "smooth" | "auto" = "smooth") => {
         messagesEndRef.current?.scrollIntoView({ behavior });
     }
-    
-    useEffect(() => {
-        if (activeChat) {
-            // Scroll to bottom instantly when a chat is opened
-            setTimeout(() => scrollToBottom('auto'), 50); 
-        }
-    }, [activeChat]);
 
     useEffect(() => {
         if (messageId && messageRefs.current.has(messageId)) {
