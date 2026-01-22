@@ -17,11 +17,12 @@ import type { Message } from '@/types/types_chat';
 import type { ProjectMember } from '@/types/types_projects';
 
 const SettingsDialog = lazy(() => import('@/components/chat/SettingsDialog'));
+const ProfileDialog = lazy(() => import('@/components/user/ProfileDialog'));
 const FileExplorer = lazy(() => import('@/components/layout/FileExplorer'));
 const MarkdownRenderer = lazy(() => import('@/components/chat/MarkdownRenderer'));
 
 const ChatPage: React.FC = () => {
-    const { user, loading: authLoading, loginWithGoogle, logout } = useAuthContext();
+    const { user, loading: authLoading, loginWithGoogle, logout, updateUsername } = useAuthContext();
     const { currentProject, setCurrentProjectById } = useProjectContext();
     const {
         chats,
@@ -43,6 +44,7 @@ const ChatPage: React.FC = () => {
 
     const [input, setInput] = useState('');
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isFileExplorerOpen, setFileExplorerOpen] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [fileExplorerKey, setFileExplorerKey] = useState(Date.now());
@@ -202,6 +204,7 @@ const ChatPage: React.FC = () => {
                 <Header
                     user={user}
                     onToggleSettings={() => setIsSettingsOpen(true)}
+                    onOpenProfile={() => setIsProfileOpen(true)} 
                     onLogin={loginWithGoogle}
                     onLogout={logout}
                     currentProject={currentProject}
@@ -241,9 +244,9 @@ const ChatPage: React.FC = () => {
                                                     avatarUrl = '/logo.svg';
                                                     avatarFallback = 'AI';
                                                 } else if (isOwnMessage) {
-                                                    displayName = 'You';
+                                                    displayName = user?.username || 'You';
                                                     avatarUrl = user?.photoURL ?? undefined;
-                                                    avatarFallback = user?.displayName?.charAt(0).toUpperCase() || 'U';
+                                                    avatarFallback = user?.username?.charAt(0).toUpperCase() || user?.displayName?.charAt(0).toUpperCase() || 'U';
                                                 } else {
                                                     const author = getMessageAuthor(message);
                                                     displayName = author?.username || 'Unknown User';
@@ -363,6 +366,14 @@ const ChatPage: React.FC = () => {
             </div>
             <Suspense fallback={<div>Loading...</div>}>
                 {isSettingsOpen && <SettingsDialog isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />}
+                 {user && isProfileOpen && (
+                    <ProfileDialog
+                        isOpen={isProfileOpen}
+                        onClose={() => setIsProfileOpen(false)}
+                        onSave={updateUsername}
+                        currentUsername={user.username}
+                    />
+                )}
             </Suspense>
         </div>
     );

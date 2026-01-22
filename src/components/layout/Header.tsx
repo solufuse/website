@@ -10,13 +10,14 @@ import type { ProjectDetail } from '@/types/types_projects';
 
 interface HeaderProps {
     user: AuthenticatedUser | null;
-    onToggleSettings: () => void;
+    onToggleSettings: () => void; // Reverted to onToggleSettings
+    onOpenProfile: () => void;
     onLogin: () => void;
     onLogout: () => void;
     currentProject: ProjectDetail | null;
 }
 
-const Header: React.FC<HeaderProps> = ({ user, onToggleSettings, onLogin, onLogout, currentProject }) => {
+const Header: React.FC<HeaderProps> = ({ user, onToggleSettings, onOpenProfile, onLogin, onLogout, currentProject }) => {
 
     const handleGetToken = async () => {
         try {
@@ -48,6 +49,7 @@ const Header: React.FC<HeaderProps> = ({ user, onToggleSettings, onLogin, onLogo
             <div className="flex items-center gap-4">
                 {user ? (
                     <>
+                        {/* Reverted to onToggleSettings */}
                         <Button variant="ghost" size="icon" onClick={onToggleSettings}>
                             <Settings className="h-5 w-5" />
                             <span className="sr-only">Settings</span>
@@ -69,7 +71,7 @@ const Header: React.FC<HeaderProps> = ({ user, onToggleSettings, onLogin, onLogo
                                     </div>
                                 </DropdownMenuLabel>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem>Profile</DropdownMenuItem>
+                                <DropdownMenuItem onClick={onOpenProfile}>Profile</DropdownMenuItem>
                                 <DropdownMenuItem onClick={handleGetToken}>Get JWT Token</DropdownMenuItem>
                                 <DropdownMenuItem onClick={handleGetCurrentProjectId}>Get Project ID</DropdownMenuItem>
                                 <DropdownMenuSeparator />
