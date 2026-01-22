@@ -68,9 +68,7 @@ const MessageNavigator: React.FC<MessageNavigatorProps> = ({ isOpen, onClose, on
                             onClick={() => handleMessageClick(msg)}
                         >
                             <p className={`text-sm font-medium truncate ${msg.role === 'user' ? 'text-blue-500' : 'text-green-500'}`}>{msg.role === 'user' ? 'You' : 'AI'}</p>
-                            <p className="text-xs text-muted-foreground">
-                                {msg.content.length > 30 ? `${msg.content.substring(0, 30)}...` : msg.content}
-                            </p>
+                            <p className="text-xs text-muted-foreground truncate">{msg.content}</p>
                         </div>
                     ))}
                 </div>
