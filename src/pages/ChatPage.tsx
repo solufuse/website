@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect, useLayoutEffect, useRef, Suspense, lazy, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -220,10 +219,8 @@ const ChatPage: React.FC = () => {
 
     return (
         <div className="flex h-screen bg-background text-foreground">
-            <Helmet>
-                <title>{pageTitle}</title>
-                <meta name="description" content={pageDescription} />
-            </Helmet>
+            <title>{pageTitle}</title>
+            <meta name="description" content={pageDescription} />
             <Sidebar
                 isSidebarOpen={isSidebarOpen}
                 onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
