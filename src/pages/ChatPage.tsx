@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Bot, FolderOpen, Upload, Clipboard, Link, XCircle, AlertTriangle, PanelRightOpen } from 'lucide-react';
+import { Send, Bot, FolderOpen, Upload, Clipboard, Link, XCircle, AlertTriangle, PanelRightOpen, Plus, X } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { useAuthContext } from '@/context/authcontext';
@@ -50,6 +50,7 @@ const ChatPage: React.FC = () => {
     const [isMessageNavigatorOpen, setMessageNavigatorOpen] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [fileExplorerKey, setFileExplorerKey] = useState(Date.now());
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     const scrollAreaRef = useRef<HTMLDivElement>(null);
     const messagesEndRef = useRef<null | HTMLDivElement>(null);
@@ -327,24 +328,42 @@ const ChatPage: React.FC = () => {
                         </ScrollArea>
                         <footer className="p-4">
                             <div className="max-w-4xl mx-auto">
-                                <div className="flex justify-center mb-2 space-x-2">
-                                    <Button onClick={() => fileInputRef.current?.click()} disabled={!currentProject} variant="outline"><Upload className="h-4 w-4 mr-2" />Upload File</Button>
-                                    <input type="file" ref={fileInputRef} onChange={async (event: React.ChangeEvent<HTMLInputElement>) => {
-                                        const files = event.target.files;
-                                        if (files && files.length > 0 && currentProject) {
-                                            try {
-                                                await uploadFiles(Array.from(files), { projectId: currentProject.id });
-                                                setFileExplorerKey(Date.now());
-                                                alert('Files uploaded successfully!');
-                                            } catch (error) {
-                                                console.error("Failed to upload files:", error);
-                                                alert("Sorry, we couldn't upload the files.");
-                                            }
-                                        }
-                                    }} multiple className="hidden" />
-                                    <Button onClick={() => setFileExplorerOpen(true)} disabled={!currentProject} variant="outline"><FolderOpen className="h-4 w-4 mr-2" />Browse Files</Button>
-                                    <Button onClick={() => setMessageNavigatorOpen(true)} disabled={!activeChat} variant="outline"><PanelRightOpen className="h-4 w-4 mr-2" />Messages</Button>
+                                <div className="relative mb-2">
+                                    <div className="flex justify-center">
+                                        <TooltipProvider>
+                                            <div className="relative">
+                                                {isMenuOpen && (
+                                                    <div className="absolute bottom-full mb-2 w-48 bg-background border rounded-lg shadow-lg z-10">
+                                                        <Button onClick={() => { fileInputRef.current?.click(); setIsMenuOpen(false); }} disabled={!currentProject} variant="ghost" className="w-full justify-start"><Upload className="h-4 w-4 mr-2" />Upload File</Button>
+                                                        <Button onClick={() => { setFileExplorerOpen(true); setIsMenuOpen(false); }} disabled={!currentProject} variant="ghost" className="w-full justify-start"><FolderOpen className="h-4 w-4 mr-2" />Browse Files</Button>
+                                                        <Button onClick={() => { setMessageNavigatorOpen(true); setIsMenuOpen(false); }} disabled={!activeChat} variant="ghost" className="w-full justify-start"><PanelRightOpen className="h-4 w-4 mr-2" />Messages</Button>
+                                                    </div>
+                                                )}
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button onClick={() => setIsMenuOpen(!isMenuOpen)} variant="outline" size="icon" className="rounded-full">
+                                                            {isMenuOpen ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent><p>{isMenuOpen ? 'Close Menu' : 'Open Menu'}</p></TooltipContent>
+                                                </Tooltip>
+                                            </div>
+                                        </TooltipProvider>
+                                    </div>
                                 </div>
+                                <input type="file" ref={fileInputRef} onChange={async (event: React.ChangeEvent<HTMLInputElement>) => {
+                                    const files = event.target.files;
+                                    if (files && files.length > 0 && currentProject) {
+                                        try {
+                                            await uploadFiles(Array.from(files), { projectId: currentProject.id });
+                                            setFileExplorerKey(Date.now());
+                                            alert('Files uploaded successfully!');
+                                        } catch (error) {
+                                            console.error("Failed to upload files:", error);
+                                            alert("Sorry, we couldn't upload the files.");
+                                        }
+                                    }
+                                }} multiple className="hidden" />
                                 <div className="relative flex w-full items-end space-x-2 p-2 rounded-lg bg-muted">
                                     <Textarea
                                         ref={textareaRef}
@@ -382,7 +401,7 @@ const ChatPage: React.FC = () => {
                                 isOpen={isMessageNavigatorOpen}
                                 onClose={() => setMessageNavigatorOpen(false)}
                                 onSelectMessage={handleScrollToMessage}
-                                onRefresh={handleRefreshChat} // Add this line
+                                onRefresh={handleRefreshChat}
                             />
                         }
                     </Suspense>
