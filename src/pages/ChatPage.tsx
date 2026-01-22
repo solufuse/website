@@ -98,6 +98,17 @@ const ChatPage: React.FC = () => {
         setActiveChatId(chatId ?? null);
     }, [chatId, setActiveChatId]);
 
+    const scrollToBottom = (behavior: "smooth" | "auto" = "smooth") => {
+        messagesEndRef.current?.scrollIntoView({ behavior });
+    }
+    
+    useEffect(() => {
+        if (activeChat) {
+            // Scroll to bottom instantly when a chat is opened
+            setTimeout(() => scrollToBottom('auto'), 50); 
+        }
+    }, [activeChat]);
+
     useEffect(() => {
         if (messageId && messageRefs.current.has(messageId)) {
             const messageElement = messageRefs.current.get(messageId);
@@ -113,10 +124,6 @@ const ChatPage: React.FC = () => {
         }
     }, [messageId, activeChat]);
 
-
-    const scrollToBottom = (behavior: "smooth" | "auto" = "smooth") => {
-        messagesEndRef.current?.scrollIntoView({ behavior });
-    }
 
     useLayoutEffect(() => {
         if (messageId) return; 
