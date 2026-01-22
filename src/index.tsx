@@ -20,10 +20,10 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
               <Suspense fallback={<div className="flex h-screen w-full items-center justify-center"><p>Loading...</p></div>}>
                 <Routes>
-                  <Route path="/chats/:projectId/:chatId/:messageId" element={<ChatPage />} />
-                  <Route path="/chats/:projectId/:chatId" element={<ChatPage />} />
-                  <Route path="/chats/:projectId" element={<ChatPage />} />
-                  <Route path="/" element={<ChatPage />} />
+                  <Route path="/chats/:projectId/:chatId/:messageId" Component={ChatPage} />
+                  <Route path="/chats/:projectId/:chatId" Component={ChatPage} />
+                  <Route path="/chats/:projectId" Component={ChatPage} />
+                  <Route path="/" Component={ChatPage} />
                 </Routes>
               </Suspense>
             </ThemeProvider>
