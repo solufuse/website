@@ -116,20 +116,6 @@ const ChatPage: React.FC = () => {
         }
     }, [messageId, activeChat]);
 
-
-    useLayoutEffect(() => {
-        if (messageId) return; 
-
-        const scrollContainer = scrollAreaRef.current?.querySelector('div[data-radix-scroll-area-viewport]');
-        if (!scrollContainer) return;
-
-        const isAtBottom = scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < 1;
-
-        if (isAtBottom) {
-            setTimeout(() => scrollToBottom('smooth'), 100);
-        }
-    }, [activeChat, isLoading, messageId]);
-
     const handleSend = async () => {
         if (!input.trim()) return;
         await sendMessage(input);
