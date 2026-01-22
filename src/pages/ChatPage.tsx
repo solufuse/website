@@ -80,10 +80,8 @@ const ChatPage: React.FC = () => {
     }, [currentProject, loadChats]);
 
     useEffect(() => {
-        if (chatId) {
-            setActiveChatId(chatId);
-        } 
-    }, [chatId, setActiveChatId, chats]);
+        setActiveChatId(chatId ?? null);
+    }, [chatId, setActiveChatId]);
 
     useEffect(() => {
         if (messageId && messageRefs.current.has(messageId)) {
@@ -134,7 +132,6 @@ const ChatPage: React.FC = () => {
     const handleConversationSelect = (id: string) => {
         if (currentProject) {
             navigate(`/chats/${currentProject.id}/${id}`);
-            setActiveChatId(id);
         }
     };
 
