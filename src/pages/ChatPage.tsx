@@ -35,7 +35,6 @@ const ChatPage: React.FC = () => {
         deleteChat,
         sendMessage,
         cancelGeneration,
-        setActiveChatId
     } = useChatContext();
 
     const { projectId, messageId } = useParams<{ projectId?: string; chatId?: string; messageId?: string }>();
@@ -78,19 +77,19 @@ const ChatPage: React.FC = () => {
     }, [currentProject, loadChats]);
 
     useEffect(() => {
-    if (messageId && messageRefs.current.has(messageId)) {
-        const messageElement = messageRefs.current.get(messageId);
-        if (messageElement) {
-            setTimeout(() => {
-                messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                messageElement.classList.add('highlight');
+        if (messageId && messageRefs.current.has(messageId)) {
+            const messageElement = messageRefs.current.get(messageId);
+            if (messageElement) {
                 setTimeout(() => {
-                    messageElement.classList.remove('highlight');
-                }, 2000); // Highlight for 2 seconds
-            }, 100);
+                    messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    messageElement.classList.add('highlight');
+                    setTimeout(() => {
+                        messageElement.classList.remove('highlight');
+                    }, 2000); // Highlight for 2 seconds
+                }, 100);
+            }
         }
-    }
-}, [messageId, activeChat]);
+    }, [messageId, activeChat]);
 
 
     const scrollToBottom = (behavior: "smooth" | "auto" = "smooth") => {
@@ -123,7 +122,6 @@ const ChatPage: React.FC = () => {
     const handleConversationSelect = (id: string) => {
         if (currentProject) {
             navigate(`/chats/${currentProject.id}/${id}`);
-            setActiveChatId(id)
         }
     };
 
@@ -218,10 +216,27 @@ const ChatPage: React.FC = () => {
                                     ) : (
                                         <div className="space-y-6">
                                             {messages.map((message) => {
-                                                const author = getMessageAuthor(message);
-                                                const displayName = author?.username || (message.role === 'user' ? 'You' : 'Solufuse');
-                                                const avatarUrl = author?.avatar_url || (message.role === 'user' && user ? user.photoURL : undefined);
-                                                const avatarFallback = displayName?.charAt(0).toUpperCase() || 'U';
+                                                const shareId = message.commit_hash || message.id;
+
+                                                let displayName: string;
+                                                let avatarUrl: string | undefined;
+                                                let avatarFallback: string;
+                                                const isOwnMessage = message.role === 'user' && user?.uid === message.user_id;
+
+                                                if (message.role === 'assistant') {
+                                                    displayName = 'Solufuse';
+                                                    avatarUrl = '/logo.svg';
+                                                    avatarFallback = 'AI';
+                                                } else if (isOwnMessage) {
+                                                    displayName = 'You';
+                                                    avatarUrl = user?.photoURL ?? undefined;
+                                                    avatarFallback = user?.displayName?.charAt(0).toUpperCase() || 'U';
+                                                } else {
+                                                    const author = getMessageAuthor(message);
+                                                    displayName = author?.username || 'Unknown User';
+                                                    avatarUrl = author?.avatar_url;
+                                                    avatarFallback = displayName.charAt(0).toUpperCase() || 'U';
+                                                }
 
                                                 return (
                                                     <div key={message.id} ref={el => {
@@ -232,7 +247,7 @@ const ChatPage: React.FC = () => {
                                                         }
                                                     }}>
                                                         <div className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
-                                                            {message.role === 'assistant' && <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>AI</AvatarFallback></Avatar>}
+                                                            {message.role === 'assistant' && <Avatar><AvatarImage src={avatarUrl} alt={displayName} /><AvatarFallback>{avatarFallback}</AvatarFallback></Avatar>}
                                                             <div className={`max-w-[85%] ${message.role === 'user' ? 'p-3 rounded-lg bg-primary text-primary-foreground dark:bg-slate-700 dark:text-slate-50' : 'p-4 rounded-md bg-muted/50 dark:bg-slate-900/50 border border-border/70'}`}>
                                                                 <p className="font-bold mb-2">{displayName}</p>
                                                                 <Suspense fallback={<div>Loading markdown...</div>}>
@@ -257,7 +272,7 @@ const ChatPage: React.FC = () => {
                                                             </Tooltip>
                                                             <Tooltip>
                                                                 <TooltipTrigger asChild>
-                                                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleShare(message.id)}>
+                                                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleShare(shareId)}>
                                                                         <Link className="h-4 w-4" />
                                                                     </Button>
                                                                 </TooltipTrigger>
