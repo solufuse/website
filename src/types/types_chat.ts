@@ -16,7 +16,7 @@ export interface Chat {
     project_id: string;
     title: string;
     api_key: string;
-    owner_uid: string;
+    user_id: string; // UID of the user who owns the chat
     created_at: string; // ISO 8601 datetime string
     messages: Message[];
     is_generation_cancelled?: boolean;
