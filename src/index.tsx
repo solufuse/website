@@ -7,14 +7,12 @@ import { AuthProvider } from '@/context/authcontext';
 import { ProjectProvider } from '@/context/ProjectContext';
 import { ChatProvider } from '@/context/ChatContext';
 import { ThemeProvider } from "@/components/theme-provider";
-import { HelmetProvider } from 'react-helmet-async';
 
 // Lazy load the main chat page
 const ChatPage = lazy(() => import('@/pages/ChatPage'));
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <HelmetProvider>
       <Router>
         <AuthProvider>
           <ProjectProvider>
@@ -33,6 +31,5 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           </ProjectProvider>
         </AuthProvider>
       </Router>
-    </HelmetProvider>
   </React.StrictMode>
 );
