@@ -39,7 +39,7 @@ const ChatPage: React.FC = () => {
         setActiveChatId
     } = useChatContext();
 
-    const { projectId, messageId } = useParams<{ projectId?: string; chatId?: string; messageId?: string }>();
+    const { projectId, chatId, messageId } = useParams<{ projectId?: string; chatId?: string; messageId?: string }>();
     const navigate = useNavigate();
 
     const [input, setInput] = useState('');
@@ -78,6 +78,12 @@ const ChatPage: React.FC = () => {
             loadChats(currentProject.id);
         }
     }, [currentProject, loadChats]);
+
+    useEffect(() => {
+        if (chatId) {
+            setActiveChatId(chatId);
+        } 
+    }, [chatId, setActiveChatId, chats]);
 
     useEffect(() => {
         if (messageId && messageRefs.current.has(messageId)) {
@@ -119,7 +125,10 @@ const ChatPage: React.FC = () => {
     };
 
     const handleNewConversation = async () => {
-        await createChat();
+        const newChat = await createChat();
+        if (newChat && currentProject) {
+            navigate(`/chats/${currentProject.id}/${newChat.short_id}`);
+        }
     };
 
     const handleConversationSelect = (id: string) => {
