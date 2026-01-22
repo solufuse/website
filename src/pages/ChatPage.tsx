@@ -1,10 +1,10 @@
 
-import React, { useState, useEffect, useLayoutEffect, useRef, Suspense, lazy, useMemo } from 'react';
+import React, { useState, useEffect, useRef, Suspense, lazy, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Bot, FolderOpen, Upload, Clipboard, Link, XCircle, AlertTriangle } from 'lucide-react';
+import { Send, Bot, FolderOpen, Upload, Clipboard, Link, XCircle, AlertTriangle, PanelRightOpen } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { useAuthContext } from '@/context/authcontext';
@@ -19,6 +19,7 @@ import type { ProjectMember } from '@/types/types_projects';
 const SettingsDialog = lazy(() => import('@/components/chat/SettingsDialog'));
 const ProfileDialog = lazy(() => import('@/components/user/ProfileDialog'));
 const FileExplorer = lazy(() => import('@/components/layout/FileExplorer'));
+const MessageNavigator = lazy(() => import('@/components/chat/MessageNavigator'));
 const MarkdownRenderer = lazy(() => import('@/components/chat/MarkdownRenderer'));
 
 const ChatPage: React.FC = () => {
@@ -46,6 +47,7 @@ const ChatPage: React.FC = () => {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isFileExplorerOpen, setFileExplorerOpen] = useState(false);
+    const [isMessageNavigatorOpen, setMessageNavigatorOpen] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [fileExplorerKey, setFileExplorerKey] = useState(Date.now());
 
@@ -97,10 +99,6 @@ const ChatPage: React.FC = () => {
         setActiveChatId(chatId ?? null);
     }, [chatId, setActiveChatId]);
 
-    const scrollToBottom = (behavior: "smooth" | "auto" = "smooth") => {
-        messagesEndRef.current?.scrollIntoView({ behavior });
-    }
-
     useEffect(() => {
         if (messageId && messageRefs.current.has(messageId)) {
             const messageElement = messageRefs.current.get(messageId);
@@ -132,20 +130,6 @@ const ChatPage: React.FC = () => {
     const handleConversationSelect = (id: string) => {
         if (currentProject) {
             navigate(`/chats/${currentProject.id}/${id}`);
-        }
-    };
-
-    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const files = event.target.files;
-        if (files && files.length > 0 && currentProject) {
-            try {
-                await uploadFiles(Array.from(files), { projectId: currentProject.id });
-                setFileExplorerKey(Date.now());
-                alert('Files uploaded successfully!');
-            } catch (error) {
-                console.error("Failed to upload files:", error);
-                alert("Sorry, we couldn't upload the files.");
-            }
         }
     };
 
@@ -338,8 +322,21 @@ const ChatPage: React.FC = () => {
                             <div className="max-w-4xl mx-auto">
                                 <div className="flex justify-center mb-2 space-x-2">
                                     <Button onClick={() => fileInputRef.current?.click()} disabled={!currentProject} variant="outline"><Upload className="h-4 w-4 mr-2" />Upload File</Button>
-                                    <input type="file" ref={fileInputRef} onChange={handleFileUpload} multiple className="hidden" />
+                                    <input type="file" ref={fileInputRef} onChange={async (event: React.ChangeEvent<HTMLInputElement>) => {
+                                        const files = event.target.files;
+                                        if (files && files.length > 0 && currentProject) {
+                                            try {
+                                                await uploadFiles(Array.from(files), { projectId: currentProject.id });
+                                                setFileExplorerKey(Date.now());
+                                                alert('Files uploaded successfully!');
+                                            } catch (error) {
+                                                console.error("Failed to upload files:", error);
+                                                alert("Sorry, we couldn't upload the files.");
+                                            }
+                                        }
+                                    }} multiple className="hidden" />
                                     <Button onClick={() => setFileExplorerOpen(true)} disabled={!currentProject} variant="outline"><FolderOpen className="h-4 w-4 mr-2" />Browse Files</Button>
+                                    <Button onClick={() => setMessageNavigatorOpen(true)} disabled={!activeChat} variant="outline"><PanelRightOpen className="h-4 w-4 mr-2" />Messages</Button>
                                 </div>
                                 <div className="relative flex w-full items-end space-x-2 p-2 rounded-lg bg-muted">
                                     <Textarea
@@ -369,6 +366,14 @@ const ChatPage: React.FC = () => {
                                 onClose={() => setFileExplorerOpen(false)}
                                 projectId={currentProject.id}
                                 currentProject={currentProject}
+                            />
+                        }
+                    </Suspense>
+                    <Suspense fallback={loadingComponent}>
+                        {activeChat && isMessageNavigatorOpen &&
+                            <MessageNavigator
+                                isOpen={isMessageNavigatorOpen}
+                                onClose={() => setMessageNavigatorOpen(false)}
                             />
                         }
                     </Suspense>
