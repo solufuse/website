@@ -55,7 +55,9 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const loadChats = useCallback(async (projectId: string) => {
         try {
             const loadedChats = await apiGetChats(projectId);
-            setChats(loadedChats);
+            // Sort chats by creation date, newest first
+            const sortedChats = loadedChats.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            setChats(sortedChats);
         } catch (err: any) {
             setError('Failed to load chats.');
             console.error(err);
@@ -77,7 +79,8 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setError(null);
         try {
             const newChat = await apiCreateChat(currentProject.id, { title, api_key: apiKey });
-            setChats(prev => [...prev, newChat]);
+            // Add new chat to the top of the list
+            setChats(prev => [newChat, ...prev]);
             navigate(`/chats/${currentProject.id}/${newChat.short_id}`);
             return newChat;
         } catch (err: any) {
@@ -105,12 +108,14 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (!messageContent.trim()) return;
 
         let currentChatId = activeChatId;
+        let tempChatCreated = false;
 
         // If there's no active chat, create a new one first.
         if (!currentChatId) {
             const newChat = await createChat(messageContent.substring(0,20));
             if (newChat) {
                 currentChatId = newChat.short_id;
+                tempChatCreated = true;
             } else {
                 setError("Could not create a new chat to send message.");
                 return;
@@ -139,10 +144,16 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         try {
             await apiPostMessage(currentChatId, { content: messageContent, api_key: apiKey, model_name: getModelName() || undefined });
-            // Refresh chats to get the assistant's response
-            await loadChats(currentProject.id);
+            // Refresh the specific chat to get the assistant's response
+             if (currentProject) {
+                await loadChats(currentProject.id);
+             }
         } catch (err: any) {
             setError(`Failed to send message: ${err.message}`);
+            // Revert chat creation if it was temporary
+            if (tempChatCreated && currentChatId) {
+                await deleteChat(currentChatId);
+            }
             const errorId = `error-${Date.now()}`;
             const errorMessage: Message = { id: errorId, content: `Error: ${err.message}`, role: 'assistant', timestamp: new Date().toISOString() };
             setChats(prev => prev.map(chat => 
