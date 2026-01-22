@@ -5,17 +5,18 @@ import 'react-resizable/css/styles.css';
 import { useChatContext } from '@/context/ChatContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
+import { X, RefreshCw } from 'lucide-react';
 import type { Message } from '@/types/types_chat';
 
 interface MessageNavigatorProps {
     isOpen: boolean;
     onClose: () => void;
     onSelectMessage: (messageId: string) => void;
+    onRefresh: () => void;
     className?: string;
 }
 
-const MessageNavigator: React.FC<MessageNavigatorProps> = ({ isOpen, onClose, onSelectMessage, className }) => {
+const MessageNavigator: React.FC<MessageNavigatorProps> = ({ isOpen, onClose, onSelectMessage, onRefresh, className }) => {
     const { activeChat } = useChatContext();
     const [width, setWidth] = useState(() => {
         if (typeof window === 'undefined') return 250;
@@ -41,7 +42,7 @@ const MessageNavigator: React.FC<MessageNavigatorProps> = ({ isOpen, onClose, on
             height={Infinity}
             axis="x"
             resizeHandles={['w']}
-            minConstraints={[100, Infinity]}
+            minConstraints={[200, Infinity]}
             maxConstraints={[800, Infinity]}
             onResizeStop={onResizeStop}
             handle={<div className="absolute top-0 -left-1 w-2 h-full cursor-col-resize group z-10"><div className="w-full h-full bg-transparent group-hover:bg-primary/20 transition-colors duration-200"></div></div>}
@@ -49,19 +50,24 @@ const MessageNavigator: React.FC<MessageNavigatorProps> = ({ isOpen, onClose, on
         >
             <div className="flex justify-between items-center p-2 border-b">
                 <h3 className="font-semibold">Messages</h3>
-                <Button variant="ghost" size="icon" onClick={onClose} title="Close Panel">
-                    <X className="h-4 w-4" />
-                </Button>
+                <div>
+                    <Button variant="ghost" size="icon" onClick={onRefresh} title="Refresh Messages">
+                        <RefreshCw className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={onClose} title="Close Panel">
+                        <X className="h-4 w-4" />
+                    </Button>
+                </div>
             </div>
             <ScrollArea className="flex-1">
                 <div className="p-2">
                     {activeChat?.messages?.map((msg) => (
                         <div 
                             key={msg.id} 
-                            className="p-2 my-1 rounded-md hover:bg-muted cursor-pointer"
+                            className={`p-2 my-1 rounded-md hover:bg-muted cursor-pointer border-l-4 ${msg.role === 'user' ? 'border-blue-500' : 'border-green-500'}`}
                             onClick={() => handleMessageClick(msg)}
                         >
-                            <p className="text-sm font-medium truncate">{msg.role === 'user' ? 'You' : 'AI'}</p>
+                            <p className={`text-sm font-medium truncate ${msg.role === 'user' ? 'text-blue-500' : 'text-green-500'}`}>{msg.role === 'user' ? 'You' : 'AI'}</p>
                             <p className="text-xs text-muted-foreground truncate">{msg.content}</p>
                         </div>
                     ))}

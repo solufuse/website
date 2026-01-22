@@ -82,6 +82,12 @@ const ChatPage: React.FC = () => {
         }
     };
 
+    const handleRefreshChat = async () => {
+        if (currentProject) {
+            await loadChats(currentProject.id);
+        }
+    };
+
     useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
@@ -376,6 +382,7 @@ const ChatPage: React.FC = () => {
                                 isOpen={isMessageNavigatorOpen}
                                 onClose={() => setMessageNavigatorOpen(false)}
                                 onSelectMessage={handleScrollToMessage}
+                                onRefresh={handleRefreshChat} // Add this line
                             />
                         }
                     </Suspense>
