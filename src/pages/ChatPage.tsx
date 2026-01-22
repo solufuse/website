@@ -249,9 +249,9 @@ const ChatPage: React.FC = () => {
                                                     avatarFallback = user?.username?.charAt(0).toUpperCase() || user?.displayName?.charAt(0).toUpperCase() || 'U';
                                                 } else {
                                                     const author = getMessageAuthor(message);
-                                                    displayName = author?.username || 'Unknown User';
+                                                    displayName = author?.username || author?.email || 'Unknown User';
                                                     avatarUrl = author?.avatar_url;
-                                                    avatarFallback = displayName.charAt(0).toUpperCase() || 'U';
+                                                    avatarFallback = author?.username?.charAt(0).toUpperCase() || author?.email?.charAt(0).toUpperCase() || 'U';
                                                 }
 
                                                 return (
