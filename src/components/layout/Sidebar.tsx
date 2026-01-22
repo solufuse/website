@@ -27,6 +27,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 interface Conversation {
   id: string;
   name: string;
+  owner?: string;
 }
 
 // --- PROPS --- (Simplified)
@@ -214,9 +215,9 @@ const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       <ScrollArea className="flex-1 mt-4">
-        <nav className="grid gap-1 p-2">
-          {conversations.map((conversation) => (
-             <Tooltip key={conversation.id}>
+    <nav className="grid gap-1 p-2">
+        {conversations.map((conversation) => (
+            <Tooltip key={conversation.id}>
                 <TooltipTrigger asChild>
                     <a
                         href="#"
@@ -226,9 +227,16 @@ const Sidebar: React.FC<SidebarProps> = ({
                         }}
                         className={`group relative flex items-center justify-between w-full px-3 py-2 text-sm font-medium rounded-md ${conversation.id === activeConversationId ? 'bg-muted text-primary' : 'text-muted-foreground hover:bg-muted'} ${!isSidebarOpen && 'justify-center'}`}>
                         
-                        <span className={`flex-1 truncate min-w-0 ${!isSidebarOpen && 'hidden'}`}>
-                            {conversation.name.length > 25 ? `${conversation.name.substring(0, 25)}...` : conversation.name}
-                        </span>
+                        <div className={`flex-1 flex flex-col min-w-0 ${!isSidebarOpen && 'hidden'}`}>
+                            <span className="truncate">
+                                {conversation.name.length > 25 ? `${conversation.name.substring(0, 25)}...` : conversation.name}
+                            </span>
+                            {conversation.owner && (
+                                <span className="text-xs text-muted-foreground truncate">
+                                    by {conversation.owner}
+                                </span>
+                            )}
+                        </div>
                         
                         {isSidebarOpen && (
                             <div className="ml-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -271,11 +279,16 @@ const Sidebar: React.FC<SidebarProps> = ({
                         )}
                     </a>
                 </TooltipTrigger>
-                {!isSidebarOpen && <TooltipContent side="right"><p>{conversation.name}</p></TooltipContent>}
+                {!isSidebarOpen && 
+                    <TooltipContent side="right">
+                        <p>{conversation.name}</p>
+                        {conversation.owner && <p className="text-xs text-muted-foreground">by {conversation.owner}</p>}
+                    </TooltipContent>
+                }
             </Tooltip>
-          ))}
-        </nav>
-      </ScrollArea>
+        ))}
+    </nav>
+</ScrollArea>
       
       <CreateProjectDialog isOpen={isCreateProjectDialogOpen} onClose={() => setCreateProjectDialogOpen(false)} onProjectCreated={handleProjectCreated} />
       {currentProject && <ManageMembersDialog isOpen={isManageMembersDialogOpen} onClose={() => setManageMembersDialogOpen(false)} project={currentProject} onMembersChanged={refreshProjects} />}

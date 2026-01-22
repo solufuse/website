@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useLayoutEffect, useRef, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, Suspense, lazy, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -161,6 +161,17 @@ const ChatPage: React.FC = () => {
         }
     };
 
+    const conversationsWithOwners = useMemo(() => {
+        return chats.map(chat => {
+            const owner = currentProject?.members.find(member => member.uid === chat.user_id);
+            return {
+                id: chat.short_id,
+                name: chat.title,
+                owner: owner?.username || (chat.user_id === user?.uid ? 'You' : 'Unknown')
+            };
+        });
+    }, [chats, currentProject, user]);
+
 
     if (authLoading) {
         return <div className="flex h-screen w-full items-center justify-center"><p>Loading...</p></div>;
@@ -178,7 +189,7 @@ const ChatPage: React.FC = () => {
             <Sidebar
                 isSidebarOpen={isSidebarOpen}
                 onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-                conversations={chats.filter(c => c.user_id === user?.uid).map(c => ({ id: c.short_id, name: c.title }))}
+                conversations={conversationsWithOwners}
                 activeConversationId={activeChatId}
                 isCreatingChat={isCreatingChat}
                 onNewConversation={handleNewConversation}
