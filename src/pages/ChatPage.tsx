@@ -193,6 +193,8 @@ const ChatPage: React.FC = () => {
         if (message.role !== 'user' || !message.user_id) return null;
         return currentProject?.members.find(m => m.uid === message.user_id) || null;
     }
+    
+    const loadingComponent = <div className="loading-overlay">Loading...</div>;
 
     return (
         <div className="flex h-screen bg-background text-foreground">
@@ -272,7 +274,7 @@ const ChatPage: React.FC = () => {
                                                             {message.role === 'assistant' && <Avatar><AvatarImage src={avatarUrl} alt={displayName} /><AvatarFallback>{avatarFallback}</AvatarFallback></Avatar>}
                                                             <div className={`max-w-[85%] ${message.role === 'user' ? 'p-3 rounded-lg bg-primary text-primary-foreground dark:bg-slate-700 dark:text-slate-50' : 'p-4 rounded-md bg-muted/50 dark:bg-slate-900/50 border border-border/70'}`}>
                                                                 <p className="font-bold mb-2">{displayName}</p>
-                                                                <Suspense fallback={<div>Loading markdown...</div>}>
+                                                                <Suspense fallback={loadingComponent}>
                                                                     <MarkdownRenderer content={message.content} />
                                                                 </Suspense>
                                                             </div>
@@ -357,7 +359,7 @@ const ChatPage: React.FC = () => {
                             </div>
                         </footer>
                     </div>
-                    <Suspense fallback={<div>Loading...</div>}>
+                    <Suspense fallback={loadingComponent}>
                         {currentProject && isFileExplorerOpen &&
                             <FileExplorer
                                 refreshTrigger={fileExplorerKey}
@@ -370,7 +372,7 @@ const ChatPage: React.FC = () => {
                     </Suspense>
                 </div>
             </div>
-            <Suspense fallback={<div>Loading...</div>}>
+            <Suspense fallback={loadingComponent}>
                 {isSettingsOpen && <SettingsDialog isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />}
                  {user && isProfileOpen && (
                     <ProfileDialog
