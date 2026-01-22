@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useLayoutEffect, useRef, Suspense, lazy, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -54,6 +55,20 @@ const ChatPage: React.FC = () => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+    // SEO Content
+    const pageTitle = activeChat ? `${activeChat.title} | Solufuse` : 'Solufuse - High-Voltage Electrical Calculations';
+    const pageDescription = useMemo(() => {
+        if (activeChat && activeChat.messages.length > 0) {
+            const firstUserMessage = activeChat.messages.find(m => m.role === 'user');
+            const firstAssistantMessage = activeChat.messages.find(m => m.role === 'assistant');
+            let description = `A conversation with Solufuse. `;
+            if(firstUserMessage) description += `User: ${firstUserMessage.content.substring(0, 75)}... `;
+            if(firstAssistantMessage) description += `Solufuse: ${firstAssistantMessage.content.substring(0, 75)}...`;
+            return description.substring(0, 160);
+        }
+        return 'Solufuse is a tool for high-voltage electrical calculations, the tool can apply NFC 13-200, IEC 60287 standards, verify big data values on ETAP Software and define calculations.';
+    }, [activeChat]);
 
 
     useEffect(() => {
@@ -198,6 +213,10 @@ const ChatPage: React.FC = () => {
 
     return (
         <div className="flex h-screen bg-background text-foreground">
+            <Helmet>
+                <title>{pageTitle}</title>
+                <meta name="description" content={pageDescription} />
+            </Helmet>
             <Sidebar
                 isSidebarOpen={isSidebarOpen}
                 onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
