@@ -71,6 +71,16 @@ const ChatPage: React.FC = () => {
         return 'Solufuse is a tool for high-voltage electrical calculations, the tool can apply NFC 13-200, IEC 60287 standards, verify big data values on ETAP Software and define calculations.';
     }, [activeChat]);
 
+    const handleScrollToMessage = (messageId: string) => {
+        const messageElement = messageRefs.current.get(messageId);
+        if (messageElement) {
+            messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            messageElement.classList.add('highlight');
+            setTimeout(() => {
+                messageElement.classList.remove('highlight');
+            }, 2000);
+        }
+    };
 
     useEffect(() => {
         if (textareaRef.current) {
@@ -100,17 +110,8 @@ const ChatPage: React.FC = () => {
     }, [chatId, setActiveChatId]);
 
     useEffect(() => {
-        if (messageId && messageRefs.current.has(messageId)) {
-            const messageElement = messageRefs.current.get(messageId);
-            if (messageElement) {
-                setTimeout(() => {
-                    messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    messageElement.classList.add('highlight');
-                    setTimeout(() => {
-                        messageElement.classList.remove('highlight');
-                    }, 2000); // Highlight for 2 seconds
-                }, 100);
-            }
+        if (messageId) {
+            handleScrollToMessage(messageId);
         }
     }, [messageId, activeChat]);
 
@@ -374,6 +375,7 @@ const ChatPage: React.FC = () => {
                             <MessageNavigator
                                 isOpen={isMessageNavigatorOpen}
                                 onClose={() => setMessageNavigatorOpen(false)}
+                                onSelectMessage={handleScrollToMessage}
                             />
                         }
                     </Suspense>

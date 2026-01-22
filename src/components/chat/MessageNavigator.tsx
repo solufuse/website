@@ -6,20 +6,27 @@ import { useChatContext } from '@/context/ChatContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
+import type { Message } from '@/types/types_chat';
 
 interface MessageNavigatorProps {
     isOpen: boolean;
     onClose: () => void;
+    onSelectMessage: (messageId: string) => void;
     className?: string;
 }
 
-const MessageNavigator: React.FC<MessageNavigatorProps> = ({ isOpen, onClose, className }) => {
+const MessageNavigator: React.FC<MessageNavigatorProps> = ({ isOpen, onClose, onSelectMessage, className }) => {
     const { activeChat } = useChatContext();
     const [width, setWidth] = useState(() => {
         if (typeof window === 'undefined') return 250;
         const savedWidth = localStorage.getItem('messageNavigatorWidth');
         return savedWidth ? parseInt(savedWidth, 10) : 250;
     });
+
+    const handleMessageClick = (message: Message) => {
+        onSelectMessage(message.id);
+        onClose();
+    };
 
     const onResizeStop: ResizableBoxProps['onResizeStop'] = (_e, data) => {
         localStorage.setItem('messageNavigatorWidth', String(data.size.width));
@@ -34,7 +41,7 @@ const MessageNavigator: React.FC<MessageNavigatorProps> = ({ isOpen, onClose, cl
             height={Infinity}
             axis="x"
             resizeHandles={['w']}
-            minConstraints={[200, Infinity]}
+            minConstraints={[100, Infinity]}
             maxConstraints={[800, Infinity]}
             onResizeStop={onResizeStop}
             handle={<div className="absolute top-0 -left-1 w-2 h-full cursor-col-resize group z-10"><div className="w-full h-full bg-transparent group-hover:bg-primary/20 transition-colors duration-200"></div></div>}
@@ -49,7 +56,11 @@ const MessageNavigator: React.FC<MessageNavigatorProps> = ({ isOpen, onClose, cl
             <ScrollArea className="flex-1">
                 <div className="p-2">
                     {activeChat?.messages?.map((msg) => (
-                        <div key={msg.id} className="p-2 my-1 rounded-md hover:bg-muted cursor-pointer">
+                        <div 
+                            key={msg.id} 
+                            className="p-2 my-1 rounded-md hover:bg-muted cursor-pointer"
+                            onClick={() => handleMessageClick(msg)}
+                        >
                             <p className="text-sm font-medium truncate">{msg.role === 'user' ? 'You' : 'AI'}</p>
                             <p className="text-xs text-muted-foreground truncate">{msg.content}</p>
                         </div>
