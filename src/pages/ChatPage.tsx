@@ -178,7 +178,7 @@ const ChatPage: React.FC = () => {
             <Sidebar
                 isSidebarOpen={isSidebarOpen}
                 onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-                conversations={chats.map(c => ({ id: c.short_id, name: c.title }))}
+                conversations={chats.filter(c => c.user_id === user?.uid).map(c => ({ id: c.short_id, name: c.title }))}
                 activeConversationId={activeChatId}
                 isCreatingChat={isCreatingChat}
                 onNewConversation={handleNewConversation}
