@@ -35,6 +35,7 @@ const ChatPage: React.FC = () => {
         deleteChat,
         sendMessage,
         cancelGeneration,
+        setActiveChatId
     } = useChatContext();
 
     const { projectId, messageId } = useParams<{ projectId?: string; chatId?: string; messageId?: string }>();
@@ -122,6 +123,7 @@ const ChatPage: React.FC = () => {
     const handleConversationSelect = (id: string) => {
         if (currentProject) {
             navigate(`/chats/${currentProject.id}/${id}`);
+            setActiveChatId(id);
         }
     };
 
