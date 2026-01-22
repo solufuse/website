@@ -1,6 +1,6 @@
 import { getAuthToken } from './getAuthToken';
 // UPDATED: Importing user-specific types from the new dedicated file.
-import type { UserProfile, UserPublic, UserUpdatePayload, PaginatedUsersResponse } from '@/types/types_users';
+import type { UserProfile, UserUpdatePayload, PaginatedUsersResponse } from '@/types/types_users';
 
 const API_BASE_URL = 'https://api.solufuse.com';
 
@@ -51,18 +51,18 @@ export const updateMe = async (payload: UserUpdatePayload): Promise<UserProfile>
 };
 
 /**
- * Searches for users by email or username with pagination.
+ * Searches for users by email or username.
+ * NOTE: The 'page' parameter has been removed as it is no longer supported by the backend.
  * @param query The search query.
- * @param page The page number to retrieve.
  * @param limit The number of results per page.
  * @returns A promise that resolves to a paginated list of users.
  */
-export const searchUsers = async (query: string, page: number = 1, limit: number = 10): Promise<PaginatedUsersResponse> => {
+export const searchUsers = async (query: string, limit: number = 10): Promise<PaginatedUsersResponse> => {
     if (!query) return { users: [], pagination: { total_items: 0, total_pages: 1, current_page: 1, limit: limit } };
     
     const token = await getAuthToken();
-    // CORRECTED: Removed the trailing slash from /search to match the backend route defined in FastAPI.
-    const response = await fetch(`${API_BASE_URL}/users/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`, {
+    // CORRECTED: Added trailing slash and removed 'page' parameter to match the backend.
+    const response = await fetch(`${API_BASE_URL}/users/search/?q=${encodeURIComponent(query)}&limit=${limit}`, {
         headers: { 'Authorization': `Bearer ${token}` },
     });
     
@@ -77,8 +77,12 @@ export const searchUsers = async (query: string, page: number = 1, limit: number
 };
 
 /**
+ * NOTE: This function is likely deprecated. 
+ * The backend API no longer appears to have a direct /users/{userId}/ endpoint.
+ * Consider using lookupUser({ uid: userId }) instead.
+ * 
  * Fetches the public profile of a specific user by their ID.
- */
+ *
 export const getUser = async (userId: string): Promise<UserPublic> => {
     const token = await getAuthToken();
     const response = await fetch(`${API_BASE_URL}/users/${userId}/`, { 
@@ -86,10 +90,11 @@ export const getUser = async (userId: string): Promise<UserPublic> => {
     });
     return handleResponse(response);
 };
+*/
 
 /**
- * [NEW] Looks up a single user by their UID or email.
- * Corresponds to the /users/lookup backend endpoint.
+ * Looks up a single user by their UID or email.
+ * Corresponds to the /users/lookup/ backend endpoint.
  */
 export const lookupUser = async (params: { uid?: string; email?: string }): Promise<UserProfile> => {
     const { uid, email } = params;
@@ -103,8 +108,8 @@ export const lookupUser = async (params: { uid?: string; email?: string }): Prom
     const token = await getAuthToken();
     const query = uid ? `uid=${uid}` : `email=${encodeURIComponent(email!)}`;
     
-    // The backend route is /lookup without a trailing slash.
-    const response = await fetch(`${API_BASE_URL}/users/lookup?${query}`, {
+    // CORRECTED: The backend route is /lookup/ with a trailing slash.
+    const response = await fetch(`${API_BASE_URL}/users/lookup/?${query}`, {
         headers: { 'Authorization': `Bearer ${token}` },
     });
 
