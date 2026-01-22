@@ -64,11 +64,13 @@ const MessageNavigator: React.FC<MessageNavigatorProps> = ({ isOpen, onClose, on
                     {activeChat?.messages?.map((msg) => (
                         <div 
                             key={msg.id} 
-                            className={`p-2 my-1 rounded-md hover:bg-muted cursor-pointer border-l-4 ${msg.role === 'user' ? 'border-blue-500' : 'border-green-500'}`}
+                            className={`px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer border-l-4 ${msg.role === 'user' ? 'border-blue-500' : 'border-green-500'}`}
                             onClick={() => handleMessageClick(msg)}
                         >
                             <p className={`text-sm font-medium truncate ${msg.role === 'user' ? 'text-blue-500' : 'text-green-500'}`}>{msg.role === 'user' ? 'You' : 'AI'}</p>
-                            <p className="text-xs text-muted-foreground truncate">{msg.content}</p>
+                            <p className="text-xs text-muted-foreground">
+                                {msg.content.length > 30 ? `${msg.content.substring(0, 30)}...` : msg.content}
+                            </p>
                         </div>
                     ))}
                 </div>
