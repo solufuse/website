@@ -42,15 +42,15 @@ const MessageNavigator: React.FC<MessageNavigatorProps> = ({ isOpen, onClose, on
             height={Infinity}
             axis="x"
             resizeHandles={['w']}
-            minConstraints={[200, Infinity]}
+            minConstraints={[150, Infinity]} // Set a min width to avoid breaking the layout
             maxConstraints={[800, Infinity]}
             onResizeStop={onResizeStop}
             handle={<div className="absolute top-0 -left-1 w-2 h-full cursor-col-resize group z-10"><div className="w-full h-full bg-transparent group-hover:bg-primary/20 transition-colors duration-200"></div></div>}
             className={`relative flex flex-col h-full bg-background border-l ${className}`}
         >
-            <div className="flex justify-between items-center p-2 border-b">
-                <h3 className="font-semibold">Messages</h3>
-                <div>
+            <div className="flex justify-between items-center p-2 border-b flex-nowrap overflow-hidden">
+                <h3 className="font-semibold truncate pr-2">Messages</h3>
+                <div className="flex-shrink-0">
                     <Button variant="ghost" size="icon" onClick={onRefresh} title="Refresh Messages">
                         <RefreshCw className="h-4 w-4" />
                     </Button>
