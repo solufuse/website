@@ -49,9 +49,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const activeChat = useMemo(() => chats.find(c => c.short_id === activeChatId) || null, [chats, activeChatId]);
 
     useEffect(() => {
-        if (chatId) {
-            setActiveChatId(chatId);
-        }
+        setActiveChatId(chatId || null);
     }, [chatId]);
 
     const loadChats = useCallback(async (projectId: string) => {
