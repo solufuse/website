@@ -1,0 +1,1 @@
+export const WS_BASE_URL = 'wss://api.solufuse.com';

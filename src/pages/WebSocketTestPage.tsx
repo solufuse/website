@@ -4,75 +4,98 @@ import Header from '@/components/layout/Header';
 import { useAuthContext } from '@/context/authcontext';
 import { useProjectContext } from '@/context/ProjectContext';
 import { getApiKey } from '@/utils/apiKeyManager';
+import ChatWebSocket from '@/api/chat_ws'; // Import the new WebSocket manager
 
 const SettingsDialog = lazy(() => import('@/components/chat/SettingsDialog'));
 const ProfileDialog = lazy(() => import('@/components/user/ProfileDialog'));
 
 const WebSocketTestPage = () => {
   const [chatId, setChatId] = useState('');
+  const [projectId, setProjectId] = useState(''); // Added for the new URL structure
   const [message, setMessage] = useState('');
   const [log, setLog] = useState<string[]>([]);
   const [status, setStatus] = useState('Disconnected');
-  const ws = useRef<WebSocket | null>(null);
+  const wsClient = useRef<ChatWebSocket | null>(null);
 
   const { user, loginWithGoogle, logout, updateUsername } = useAuthContext();
   const { currentProject } = useProjectContext();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
+  useEffect(() => {
+    // If there is a current project, set the projectId for the test page
+    if (currentProject) {
+      setProjectId(currentProject.id);
+    }
+  }, [currentProject]);
+
   const addLog = (text: string) => {
     console.log(text);
     setLog(prev => [...prev, text]);
   };
 
-  const connect = () => {
-    if (!chatId) {
-      addLog('--- Chat ID is required ---');
+  const connect = async () => {
+    if (!chatId || !projectId) {
+      addLog('--- Project ID and Chat ID are required ---');
       return;
     }
 
-    addLog('--- Attempting to connect... ---');
-    const wsUrl = `wss://api.solufuse.com/v2/chats/ws/${chatId}`;
-    
     const apiKey = getApiKey();
     if (!apiKey) {
-        addLog('--- API Key not found in localStorage. Please add it in settings. ---');
+      addLog('--- API Key not found. Please add it via the settings dialog. ---');
+      return;
     }
 
-    const finalUrl = apiKey ? `${wsUrl}?apiKey=${apiKey}` : wsUrl;
-    addLog(`Connecting to: ${finalUrl}`)
+    // Disconnect previous connection if any
+    if (wsClient.current) {
+      wsClient.current.close();
+    }
 
-    ws.current = new WebSocket(finalUrl);
+    addLog(`--- Attempting to connect (Project: ${projectId}, Chat: ${chatId}) ---`);
+    wsClient.current = new ChatWebSocket(projectId, chatId, apiKey);
 
-    ws.current.onopen = () => {
-      setStatus('Connected');
-      addLog('--- Connection Opened ---');
-    };
+    wsClient.current.on('status', (newStatus: string) => {
+        setStatus(newStatus);
+        addLog(`Status: ${newStatus}`);
+    });
 
-    ws.current.onclose = (event) => {
-      setStatus('Disconnected');
-      addLog(`--- Connection Closed (Code: ${event.code}) ---`);
-    };
+    wsClient.current.on('open', () => {
+        addLog('--- Connection Opened and Authenticated ---');
+    });
 
-    ws.current.onerror = (event) => {
-      addLog(`--- ERROR: ${JSON.stringify(event)} ---`);
-    };
+    wsClient.current.on('message', (data: string) => {
+        addLog(`[SERVER]: ${data}`);
+    });
 
-    ws.current.onmessage = (event) => {
-      addLog(`[SERVER]: ${event.data}`);
-    };
+    wsClient.current.on('error', (error: Error) => {
+        addLog(`--- ERROR: ${error.message} ---`);
+    });
+
+    wsClient.current.on('close', (event: CloseEvent) => {
+        addLog(`--- Connection Closed (Code: ${event.code}) ---`);
+    });
+    
+    wsClient.current.on('end', () => {
+        addLog('--- <<END_OF_STREAM>> ---');
+    });
+
+    try {
+      await wsClient.current.connect();
+    } catch (error: any) {
+      addLog(`--- Connection failed: ${error.message} ---`);
+    }
   };
 
   const disconnect = () => {
-    if (ws.current) {
-      ws.current.close();
+    if (wsClient.current) {
+      wsClient.current.close();
     }
   };
 
   const sendMessage = () => {
-    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+    if (wsClient.current) {
       addLog(`[CLIENT]: ${message}`);
-      ws.current.send(message);
+      wsClient.current.sendMessage(message);
       setMessage('');
     } else {
       addLog('--- Not connected --- ');
@@ -82,8 +105,8 @@ const WebSocketTestPage = () => {
   useEffect(() => {
     // Cleanup on component unmount
     return () => {
-      if (ws.current) {
-        ws.current.close();
+      if (wsClient.current) {
+        wsClient.current.close();
       }
     };
   }, []);
@@ -104,9 +127,16 @@ const WebSocketTestPage = () => {
         <div className="container mx-auto p-4">
           <h1 className="text-2xl font-bold mb-4">WebSocket Test Page</h1>
           <div className="bg-gray-800 p-4 rounded-lg mb-4">
-            <p className="font-mono">Status: <span className={status === 'Connected' ? 'text-green-500' : 'text-red-500'}>{status}</span></p>
+            <p className="font-mono">Status: <span className={status === 'connected' ? 'text-green-500' : 'text-red-500'}>{status}</span></p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+             <input
+              type="text"
+              placeholder="Project ID (auto-filled from current project)"
+              value={projectId}
+              readOnly // It's better to use the project from the context
+              className="p-2 rounded bg-gray-600 text-white cursor-not-allowed"
+            />
             <input
               type="text"
               placeholder="Chat ID"

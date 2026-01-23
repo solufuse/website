@@ -1,218 +1,141 @@
-import { getAuthToken } from '@/api/getAuthToken';
-import type {
-    Chat,
-    Message,
-    CreateChatRequest,
-    PostMessageRequest,
-    DeleteMessageRequest,
-} from '@/types/types_chat';
-import { handleResponse } from '@/utils/handleResponse';
+import { EventEmitter } from 'events';
+import { getAuthToken } from '@/api/getAuthToken'; // Corrected Path
+import { WS_BASE_URL } from '@/config/apiConfig'; // Assuming this will be created or is located elsewhere
 
-const API_BASE_URL = 'https://api.solufuse.com';
-const WS_BASE_URL = 'wss://api.solufuse.com';
-
-// --- CHAT API FUNCTIONS (REST) ---
-
-export const createChat = async (projectId: string, payload: CreateChatRequest): Promise<Chat> => {
-    const token = await getAuthToken();
-    const headers: HeadersInit = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-
-    const response = await fetch(`${API_BASE_URL}/chats/project/${projectId}`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload),
-    });
-    return handleResponse(response);
-};
-
-export const getChats = async (projectId: string): Promise<Chat[]> => {
-    const token = await getAuthToken();
-    const headers: HeadersInit = {};
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-
-    const response = await fetch(`${API_BASE_URL}/chats/project/${projectId}`, { headers });
-    return handleResponse(response);
-};
-
-export const getChat = async (chatId: string): Promise<Chat> => {
-    const token = await getAuthToken();
-    const headers: HeadersInit = {};
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-
-    const response = await fetch(`${API_BASE_URL}/chats/${chatId}`, { headers });
-    return handleResponse(response);
-};
-
-export const postMessage = async (chatId: string, payload: PostMessageRequest): Promise<Message> => {
-    const token = await getAuthToken();
-    const headers: HeadersInit = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-
-    const response = await fetch(`${API_BASE_URL}/chats/${chatId}/messages`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload),
-    });
-    return handleResponse(response);
-};
-
-export const cancelGeneration = async (chatId: string): Promise<{ status: string; message: string; }> => {
-    const token = await getAuthToken();
-    const headers: HeadersInit = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-
-    const response = await fetch(`${API_BASE_URL}/chats/${chatId}/cancel`, {
-        method: 'POST',
-        headers,
-    });
-    return handleResponse(response);
-};
-
-export const deleteChat = async (chatId: string): Promise<void> => {
-    const token = await getAuthToken();
-    const headers: HeadersInit = {};
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-
-    const response = await fetch(`${API_BASE_URL}/chats/${chatId}`, {
-        method: 'DELETE',
-        headers,
-    });
-    return handleResponse(response);
-};
-
-export const deleteMessage = async (chatId: string, payload: DeleteMessageRequest): Promise<{ status: string; message: string; }> => {
-    const token = await getAuthToken();
-    const headers: HeadersInit = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-
-    const response = await fetch(`${API_BASE_URL}/chats/${chatId}/messages`, {
-        method: 'DELETE',
-        headers,
-        body: JSON.stringify(payload),
-    });
-    return handleResponse(response);
-};
-
-// --- ADMIN API FUNCTIONS ---
-
-export const syncStorage = async (): Promise<{ status: string; message: string; }> => {
-    const token = await getAuthToken();
-    const headers: HeadersInit = {};
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-
-    const response = await fetch(`${API_BASE_URL}/chats/admin/sync-storage`, {
-        method: 'POST',
-        headers,
-    });
-    return handleResponse(response);
-};
-
-export const purgeMessages = async (): Promise<{ status: string; message: string; purged_count: number; failed_or_skipped_count: number; details_on_failures: any[] }> => {
-    const token = await getAuthToken();
-    const headers: HeadersInit = {};
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-
-    const response = await fetch(`${API_BASE_URL}/chats/admin/purge-messages`, {
-        method: 'POST',
-        headers,
-    });
-    return handleResponse(response);
-};
-
-
-// --- WebSocket Chat Class ---
-
-type ChatSocketEvent = 'open' | 'message' | 'close' | 'error';
-type ChatSocketListener = (event: any) => void;
-
-export class ChatSocket {
+class ChatWebSocket extends EventEmitter {
     private ws: WebSocket | null = null;
-    private listeners: Map<ChatSocketEvent, ChatSocketListener[]> = new Map();
+    private readonly url: string;
+    private connectionPromise: Promise<void> | null = null;
+    private connectionPromise_resolved = false; // Moved this to be a class member
+    private isCancelled = false;
+    private reconnectAttempts = 0;
+    private maxReconnectAttempts = 5;
+    private reconnectInterval = 3000;
 
-    constructor(
-        private chatId: string,
-        private modelName: string,
-        private apiKey?: string,
-    ) {}
+    constructor(projectId: string, chatId: string, private apiKey: string) {
+        super();
+        this.url = `${WS_BASE_URL}/ws/v1/chat/${projectId}/${chatId}`;
+    }
 
-    async connect() {
-        if (this.ws) {
-            console.warn('WebSocket is already connected or connecting.');
-            return;
-        }
+    private async performConnection() {
+        if (this.ws) return;
+
+        console.log(`Attempting to connect to: ${this.url}`);
+        this.emit('status', 'connecting');
 
         const token = await getAuthToken();
         if (!token) {
-            console.error('Authentication token not available.');
             this.emit('error', new Error('Authentication token not available.'));
+            this.emit('status', 'disconnected');
             return;
         }
 
-        const url = new URL(`${WS_BASE_URL}/v2/chats/ws/${this.chatId}`);
-        url.searchParams.append('token', token);
-        url.searchParams.append('model_name', this.modelName);
-        if (this.apiKey) {
-            url.searchParams.append('api_key', this.apiKey);
+        try {
+            this.ws = new WebSocket(this.url);
+
+            this.connectionPromise = new Promise((resolve, reject) => {
+                const resetPromiseState = () => {
+                    this.connectionPromise_resolved = true;
+                };
+
+                this.ws!.onopen = () => {
+                    console.log('WebSocket connection opened. Sending authentication...');
+                    const authPayload = { token: token, api_key: this.apiKey };
+                    this.ws!.send(JSON.stringify(authPayload));
+                    this.emit('status', 'authenticating');
+                };
+
+                this.ws!.onmessage = (event) => {
+                    if (this.connectionPromise && !this.connectionPromise_resolved) {
+                        try {
+                            const data = JSON.parse(event.data);
+                            if (data.status === 'authenticated') {
+                                console.log('WebSocket authentication successful.');
+                                this.emit('open', event);
+                                this.emit('status', 'connected');
+                                this.reconnectAttempts = 0;
+                                resetPromiseState();
+                                resolve();
+                            } else if (data.error) {
+                                console.error(`Authentication failed: ${data.error}`);
+                                this.emit('error', new Error(`Authentication failed: ${data.error}`));
+                                resetPromiseState();
+                                reject(new Error(data.error));
+                            }
+                        } catch (e) {
+                            console.error("Received non-JSON message before authentication was complete.");
+                            this.emit('message', event.data);
+                        }
+                    } else {
+                        if (event.data === '<<END_OF_STREAM>>') {
+                            this.emit('end');
+                        } else {
+                            this.emit('message', event.data);
+                        }
+                    }
+                };
+
+                this.ws!.onerror = (event) => {
+                    console.error('WebSocket error:', event);
+                    this.emit('error', event);
+                    if (!this.connectionPromise_resolved) {
+                        resetPromiseState();
+                        reject(new Error('WebSocket connection error.'));
+                    }
+                };
+
+                this.ws!.onclose = (event) => {
+                    console.log(`WebSocket closed. Code: ${event.code}, Reason: ${event.reason}`);
+                    this.ws = null;
+                    this.connectionPromise = null;
+                    this.connectionPromise_resolved = false; // Reset for next connection
+
+                    if (!this.isCancelled && this.reconnectAttempts < this.maxReconnectAttempts) {
+                        this.reconnectAttempts++;
+                        this.emit('status', 'reconnecting');
+                        console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
+                        setTimeout(() => this.performConnection(), this.reconnectInterval);
+                    } else {
+                        this.emit('status', 'disconnected');
+                        this.emit('close', event);
+                    }
+                };
+            });
+
+            await this.connectionPromise;
+
+        } catch (error) {
+            console.error('WebSocket connection failed:', error);
+            this.emit('error', error);
+            this.emit('status', 'disconnected');
         }
-
-        this.ws = new WebSocket(url.toString());
-
-        this.ws.onopen = (event) => {
-            this.emit('open', event);
-        };
-
-        this.ws.onmessage = (event) => {
-            this.emit('message', event.data);
-        };
-
-        this.ws.onerror = (event) => {
-            this.emit('error', event);
-        };
-
-        this.ws.onclose = (event) => {
-            this.ws = null;
-            this.emit('close', event);
-        };
     }
 
-    sendMessage(message: string | object) {
+    async connect() {
+        this.isCancelled = false;
+        if (!this.connectionPromise) {
+            this.connectionPromise_resolved = false;
+            this.performConnection();
+        }
+        return this.connectionPromise;
+    }
+
+    sendMessage(content: string) {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            const payload = typeof message === 'string' ? message : JSON.stringify(message);
-            this.ws.send(payload);
+            const messagePayload = { content };
+            this.ws.send(JSON.stringify(messagePayload));
         } else {
             console.error('WebSocket is not connected.');
-            this.emit('error', new Error('WebSocket is not connected.'));
+            this.emit('error', new Error('Cannot send message, WebSocket is not connected.'));
         }
     }
 
     close() {
+        this.isCancelled = true;
         if (this.ws) {
             this.ws.close();
         }
     }
-
-    on(event: ChatSocketEvent, listener: ChatSocketListener) {
-        if (!this.listeners.has(event)) {
-            this.listeners.set(event, []);
-        }
-        this.listeners.get(event)?.push(listener);
-    }
-
-    off(event: ChatSocketEvent, listener: ChatSocketListener) {
-        const eventListeners = this.listeners.get(event);
-        if (eventListeners) {
-            const index = eventListeners.indexOf(listener);
-            if (index > -1) {
-                eventListeners.splice(index, 1);
-            }
-        }
-    }
-
-    private emit(event: ChatSocketEvent, data: any) {
-        const eventListeners = this.listeners.get(event);
-        if (eventListeners) {
-            eventListeners.forEach(listener => listener(data));
-        }
-    }
 }
+
+export default ChatWebSocket;
