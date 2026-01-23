@@ -24,7 +24,7 @@ const WebSocketTestPage = () => {
     // Construct the WebSocket URL to connect directly to the public API
     // We use wss:// because the API is served over HTTPS.
     // Note: We've changed this to bypass the local Nginx for diagnostics.
-    const wsUrl = `wss://api.solufuse.com/ws/chats/${chatId}`;
+    const wsUrl = `wss://api.solufuse.com/v2/chats/ws/${chatId}`;
     
     const finalUrl = apiKey ? `${wsUrl}?apiKey=${apiKey}` : wsUrl;
     addLog(`Connecting to: ${finalUrl}`)

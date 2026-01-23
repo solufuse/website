@@ -149,7 +149,7 @@ export class ChatSocket {
             return;
         }
 
-        const url = new URL(`${WS_BASE_URL}/chats/ws/${this.chatId}`);
+        const url = new URL(`${WS_BASE_URL}/v2/chats/ws/${this.chatId}`);
         url.searchParams.append('token', token);
         url.searchParams.append('model_name', this.modelName);
         if (this.apiKey) {
