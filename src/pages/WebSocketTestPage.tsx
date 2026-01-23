@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 const WebSocketTestPage: React.FC = () => {
     const [chatId, setChatId] = useState<string>('your-chat-id');
     const [apiKey, setApiKey] = useState<string>('');
-    const [modelName, setModelName] = useState<string>('gemini-1.5-flash');
+    const [modelName, setModelName] = useState<string>('gemini-3-flash-preview');
     const [message, setMessage] = useState<string>('');
     const [receivedMessages, setReceivedMessages] = useState<string[]>([]);
     const [connectionStatus, setConnectionStatus] = useState<'Disconnected' | 'Connecting' | 'Connected' | 'Error'>('Disconnected');
