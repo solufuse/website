@@ -1,130 +1,130 @@
-import React, { useState, useRef, useCallback } from 'react';
-import { ChatSocket } from '@/api/chat_ws';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-const WebSocketTestPage: React.FC = () => {
-    const [chatId, setChatId] = useState<string>('your-chat-id');
-    const [apiKey, setApiKey] = useState<string>('');
-    const [modelName, setModelName] = useState<string>('gemini-3-flash-preview');
-    const [message, setMessage] = useState<string>('');
-    const [receivedMessages, setReceivedMessages] = useState<string[]>([]);
-    const [connectionStatus, setConnectionStatus] = useState<'Disconnected' | 'Connecting' | 'Connected' | 'Error'>('Disconnected');
+import { useState, useRef, useEffect } from 'react';
 
-    const chatSocketRef = useRef<ChatSocket | null>(null);
+const WebSocketTestPage = () => {
+  const [chatId, setChatId] = useState('');
+  const [apiKey, setApiKey] = useState('');
+  const [message, setMessage] = useState('');
+  const [log, setLog] = useState<string[]>([]);
+  const [status, setStatus] = useState('Disconnected');
+  const ws = useRef<WebSocket | null>(null);
 
-    const handleConnect = useCallback(async () => {
-        if (chatSocketRef.current) {
-            console.warn('Already connected.');
-            return;
-        }
-        
-        setConnectionStatus('Connecting');
-        setReceivedMessages([]);
+  const addLog = (text: string) => {
+    console.log(text);
+    setLog(prev => [...prev, text]);
+  };
 
-        const socket = new ChatSocket(chatId, modelName, apiKey || undefined);
-        chatSocketRef.current = socket;
+  const connect = () => {
+    if (!chatId) {
+      addLog('--- Chat ID is required ---');
+      return;
+    }
 
-        socket.on('open', () => {
-            setConnectionStatus('Connected');
-            setReceivedMessages(prev => [...prev, '--- Connection Established ---']);
-        });
+    addLog('--- Attempting to connect... ---');
+    // Construct the WebSocket URL to connect directly to the public API
+    // We use wss:// because the API is served over HTTPS.
+    // Note: We've changed this to bypass the local Nginx for diagnostics.
+    const wsUrl = `wss://api.solufuse.com/ws/${chatId}`;
+    
+    const finalUrl = apiKey ? `${wsUrl}?apiKey=${apiKey}` : wsUrl;
+    addLog(`Connecting to: ${finalUrl}`)
 
-        socket.on('message', (data) => {
-            if (data === '[END_OF_TURN]') {
-                 setReceivedMessages(prev => [...prev, '--- AI Turn Ended ---']);
-            } else {
-                setReceivedMessages(prev => [...prev, data]);
-            }
-        });
+    ws.current = new WebSocket(finalUrl);
 
-        socket.on('error', (error) => {
-            console.error('WebSocket Error:', error);
-            setConnectionStatus('Error');
-            setReceivedMessages(prev => [...prev, `--- ERROR: ${JSON.stringify(error)} ---`]);
-        });
-
-        socket.on('close', (event) => {
-            setConnectionStatus('Disconnected');
-            setReceivedMessages(prev => [...prev, `--- Connection Closed (Code: ${event.code}) ---`]);
-            chatSocketRef.current = null;
-        });
-
-        try {
-            await socket.connect();
-        } catch (error) {
-            console.error("Failed to connect:", error);
-            setConnectionStatus('Error');
-        }
-
-    }, [chatId, modelName, apiKey]);
-
-    const handleDisconnect = () => {
-        chatSocketRef.current?.close();
+    ws.current.onopen = () => {
+      setStatus('Connected');
+      addLog('--- Connection Opened ---');
     };
 
-    const handleSendMessage = () => {
-        if (!message) return;
-        if (chatSocketRef.current) {
-            chatSocketRef.current.sendMessage(message);
-            setReceivedMessages(prev => [...prev, `You: ${message}`]);
-            setMessage('');
-        } else {
-            alert('Not connected. Please connect first.');
-        }
+    ws.current.onclose = (event) => {
+      setStatus('Disconnected');
+      addLog(`--- Connection Closed (Code: ${event.code}) ---`);
     };
 
-    return (
-        <div className="p-4 container mx-auto">
-            <Card>
-                <CardHeader>
-                    <CardTitle>WebSocket Chat Test Page</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="chatId">Chat ID</Label>
-                        <Input id="chatId" value={chatId} onChange={(e) => setChatId(e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="apiKey">API Key (Optional)</Label>
-                        <Input id="apiKey" type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="Overrides chat's stored API key" />
-                    </div>
-                     <div className="space-y-2">
-                        <Label htmlFor="modelName">Model Name</Label>
-                        <Input id="modelName" value={modelName} onChange={(e) => setModelName(e.target.value)} />
-                    </div>
-                    <div>
-                        <p>Connection Status: <span className={
-                            connectionStatus === 'Connected' ? 'text-green-500' : 
-                            connectionStatus === 'Disconnected' ? 'text-red-500' : 'text-yellow-500'
-                        }>{connectionStatus}</span></p>
-                    </div>
-                    <div className="flex space-x-2">
-                        <Button onClick={handleConnect} disabled={connectionStatus === 'Connected' || connectionStatus === 'Connecting'}>Connect</Button>
-                        <Button onClick={handleDisconnect} variant="destructive" disabled={connectionStatus !== 'Connected'}>Disconnect</Button>
-                    </div>
+    ws.current.onerror = (event) => {
+      addLog(`--- ERROR: ${JSON.stringify(event)} ---`);
+    };
 
-                    <div className="border rounded-md p-4 h-64 overflow-y-auto bg-muted">
-                        {receivedMessages.map((msg, index) => (
-                            <pre key={index} className="whitespace-pre-wrap">{msg}</pre>
-                        ))}
-                    </div>
+    ws.current.onmessage = (event) => {
+      addLog(`[SERVER]: ${event.data}`);
+    };
+  };
 
-                    <div className="flex space-x-2">
-                        <Input 
-                            value={message} 
-                            onChange={(e) => setMessage(e.target.value)} 
-                            placeholder="Type your message..."
-                            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                        />
-                        <Button onClick={handleSendMessage} disabled={connectionStatus !== 'Connected'}>Send</Button>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
-    );
+  const disconnect = () => {
+    if (ws.current) {
+      ws.current.close();
+    }
+  };
+
+  const sendMessage = () => {
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      addLog(`[CLIENT]: ${message}`);
+      ws.current.send(message);
+      setMessage('');
+    } else {
+      addLog('--- Not connected --- ');
+    }
+  };
+
+  useEffect(() => {
+    // Cleanup on component unmount
+    return () => {
+      if (ws.current) {
+        ws.current.close();
+      }
+    };
+  }, []);
+
+  return (
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">WebSocket Test Page</h1>
+      <div className="bg-gray-800 p-4 rounded-lg mb-4">
+        <p className="font-mono">Status: <span className={status === 'Connected' ? 'text-green-500' : 'text-red-500'}>{status}</span></p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <input
+          type="text"
+          placeholder="Chat ID"
+          value={chatId}
+          onChange={(e) => setChatId(e.target.value)}
+          className="p-2 rounded bg-gray-700 text-white"
+        />
+        <input
+          type="text"
+          placeholder="API Key (optional)"
+          value={apiKey}
+          onChange={(e) => setApiKey(e.target.value)}
+          className="p-2 rounded bg-gray-700 text-white"
+        />
+      </div>
+      <div className="flex gap-4 mb-4">
+        <button onClick={connect} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+          Connect
+        </button>
+        <button onClick={disconnect} className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+          Disconnect
+        </button>
+      </div>
+      <div className="flex gap-4 mb-4">
+        <input
+          type="text"
+          placeholder="Message"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+          className="flex-grow p-2 rounded bg-gray-700 text-white"
+        />
+        <button onClick={sendMessage} className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+          Send
+        </button>
+      </div>
+      <div className="bg-black p-4 rounded-lg h-96 overflow-y-auto">
+        <pre className="text-sm font-mono text-white">{
+          log.map((line, index) => <p key={index}>{line}</p>)
+        }</pre>
+      </div>
+    </div>
+  );
 };
 
 export default WebSocketTestPage;
