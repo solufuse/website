@@ -8,8 +8,9 @@ import { ProjectProvider } from '@/context/ProjectContext';
 import { ChatProvider } from '@/context/ChatContext';
 import { ThemeProvider } from "@/components/theme-provider";
 
-// Lazy load the main chat page
+// Lazy load pages
 const ChatPage = lazy(() => import('@/pages/ChatPage'));
+const WebSocketTestPage = lazy(() => import('@/pages/WebSocketTestPage'));
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -20,6 +21,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
                 <Suspense fallback={<div className="flex h-screen w-full items-center justify-center"><p>Loading...</p></div>}>
                   <Routes>
+                    <Route path="/ws-test" Component={WebSocketTestPage} />
                     <Route path="/chats/:projectId/:chatId/:messageId" Component={ChatPage} />
                     <Route path="/chats/:projectId/:chatId" Component={ChatPage} />
                     <Route path="/chats/:projectId" Component={ChatPage} />
