@@ -1,12 +1,12 @@
-import { EventEmitter } from 'events';
-import { getAuthToken } from '@/api/getAuthToken'; // Corrected Path
-import { WS_BASE_URL } from '@/config/apiConfig'; // Assuming this will be created or is located elsewhere
+import EventEmitter from 'eventemitter3'; // Use the browser-compatible event emitter
+import { getAuthToken } from '@/api/getAuthToken'; 
+import { WS_BASE_URL } from '@/config/apiConfig';
 
 class ChatWebSocket extends EventEmitter {
     private ws: WebSocket | null = null;
     private readonly url: string;
     private connectionPromise: Promise<void> | null = null;
-    private connectionPromise_resolved = false; // Moved this to be a class member
+    private connectionPromise_resolved = false; 
     private isCancelled = false;
     private reconnectAttempts = 0;
     private maxReconnectAttempts = 5;
