@@ -68,9 +68,9 @@ const WebSocketTestPage = () => {
         addLog("Cannot create chat without a project.");
         return;
     }
-    const apiKey = getApiKey();
+    const apiKey = getApiKey(); // This is for the old REST API, not the WebSocket
     if (!apiKey) {
-        addLog("API Key not found.");
+        addLog("API Key not found for REST operation.");
         return;
     }
 
@@ -91,19 +91,13 @@ const WebSocketTestPage = () => {
       addLog('--- Project ID and Chat ID are required ---');
       return;
     }
-
-    const apiKey = getApiKey();
-    if (!apiKey) {
-      addLog('--- API Key not found. Please add it via the settings dialog. ---');
-      return;
-    }
-
+    
     if (wsClient.current) {
       wsClient.current.close();
     }
 
     addLog(`--- Attempting to connect (Project: ${projectId}, Chat: ${chatId}) ---`);
-    wsClient.current = new ChatWebSocket(projectId, chatId, apiKey);
+    wsClient.current = new ChatWebSocket(projectId, chatId);
 
     wsClient.current.on('status', (newStatus: string) => {
         setStatus(newStatus);
@@ -144,7 +138,7 @@ const WebSocketTestPage = () => {
   };
 
   const sendMessage = () => {
-    if (wsClient.current) {
+    if (wsClient.current && status === 'connected') {
       addLog(`[CLIENT]: ${message}`);
       wsClient.current.sendMessage(message);
       setMessage('');
@@ -213,7 +207,7 @@ const WebSocketTestPage = () => {
                         />
                     </div>
                     <div className="flex gap-4 mb-4">
-                        <button onClick={connect} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                        <button onClick={connect} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" disabled={!chatId || !projectId}>
                         Connect
                         </button>
                         <button onClick={disconnect} className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
@@ -229,7 +223,7 @@ const WebSocketTestPage = () => {
                         onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                         className="flex-grow p-2 rounded bg-gray-700 text-white"
                         />
-                        <button onClick={sendMessage} className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                        <button onClick={sendMessage} className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded" disabled={status !== 'connected'}>
                         Send
                         </button>
                     </div>

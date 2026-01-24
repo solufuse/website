@@ -1,5 +1,4 @@
-
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { User, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { UserProfile, GlobalRole } from '@/types';
@@ -12,6 +11,7 @@ export interface AuthenticatedUser extends Omit<UserProfile, 'email' | 'photoURL
   email: string | null;
   displayName: string | null; 
   photoURL: string | null;
+  api_key_set?: boolean; // ADDED: To reflect the backend property
 }
 
 interface AuthContextType {
@@ -21,6 +21,7 @@ interface AuthContextType {
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   updateUsername: (username: string) => Promise<void>;
+  refreshUser: () => Promise<void>; // New function to refresh user data
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -30,6 +31,7 @@ const AuthContext = createContext<AuthContextType>({
     loginWithGoogle: async () => {},
     logout: async () => {},
     updateUsername: async () => {},
+    refreshUser: async () => {}, // Provide a default empty function
 });
 
 // This is a private helper function to fetch the user profile during auth initialization.
@@ -52,7 +54,7 @@ const fetchUserProfile = async (token: string): Promise<UserProfile | null> => {
     }
     
     const rawProfile = await response.json();
-    // Transform snake_case from API to camelCase for frontend
+    // The backend now sends api_key_set, which will be in rawProfile and spread into the user object.
     const { photo_url, ...rest } = rawProfile;
     return { ...rest, photoURL: photo_url, global_role: rawProfile.global_role as GlobalRole };
 };
@@ -86,6 +88,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.error("Failed to sign out", error);
       }
   };
+
+  // New function to allow components to trigger a user profile refresh
+  const refreshUser = useCallback(async () => {
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser) return; // No user to refresh
+
+    console.log("Refreshing user data...");
+    try {
+      const idToken = await firebaseUser.getIdToken(true); // Force token refresh
+      setToken(idToken);
+      const userProfile = await fetchUserProfile(idToken);
+
+      if (userProfile) {
+        const authenticatedUser: AuthenticatedUser = {
+            ...userProfile,
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName,
+            photoURL: userProfile.photoURL || firebaseUser.photoURL,
+        };
+        setUser(authenticatedUser);
+        console.log("User data refreshed.");
+      }
+    } catch (error) {
+      console.error("Failed to refresh user:", error);
+    }
+  }, []);
 
   const updateUsername = async (username: string) => {
     if (!user) {
@@ -128,7 +157,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
           if (userProfile) {
             authenticatedUser = {
-                ...userProfile,
+                ...userProfile, // This now includes api_key_set from the backend
                 uid: firebaseUser.uid,
                 email: firebaseUser.email,
                 displayName: firebaseUser.displayName,
@@ -148,6 +177,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 is_active: true,
                 projects: [],
                 username: undefined,
+                api_key_set: false, // ADDED: default value
             };
           }
 
@@ -169,7 +199,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, loginWithGoogle, logout, updateUsername }}>
+    <AuthContext.Provider value={{ user, token, loading, loginWithGoogle, logout, updateUsername, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
