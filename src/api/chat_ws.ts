@@ -1,12 +1,11 @@
 import EventEmitter from 'eventemitter3';
 import { getAuthToken } from '@/api/getAuthToken';
 import { WS_BASE_URL } from '@/config/apiConfig';
-import { getModelName } from '@/utils/apiKeyManager';
 
 class ChatWebSocket extends EventEmitter {
     private ws: WebSocket | null = null;
     private readonly url: string;
-    private readonly model: string | null;
+    private readonly model: string | null; // The model is now passed in and is immutable for this connection instance.
     private connectionPromise: Promise<void> | null = null;
     private connectionPromise_resolved = false;
     private isCancelled = false;
@@ -17,8 +16,9 @@ class ChatWebSocket extends EventEmitter {
     constructor(projectId: string, chatId: string, model?: string) {
         super();
         this.url = `${WS_BASE_URL}/ws/v1/chat/${projectId}/${chatId}`;
-        this.model = model || getModelName() || null;
-        console.log(`ChatWebSocket initialized for ${this.url} with model ${this.model}`);
+        // The model for this session is determined at instantiation.
+        this.model = model || null; 
+        console.log(`ChatWebSocket initialized for ${this.url} with model: ${this.model || '[Not Specified]'}`);
     }
 
     private async performConnection() {
@@ -44,6 +44,7 @@ class ChatWebSocket extends EventEmitter {
 
                 this.ws!.onopen = () => {
                     console.log('WebSocket connection opened. Sending authentication...');
+                    // The payload now includes the model passed during construction.
                     const authPayload = { token: token, model: this.model };
                     this.ws!.send(JSON.stringify(authPayload));
                     this.emit('status', 'authenticating');

@@ -8,7 +8,6 @@ import {
     deleteChat as apiDeleteChat,
     cancelGeneration as apiCancelGeneration
 } from '@/api/chat';
-import { getApiKey, getModelName } from '@/utils/apiKeyManager';
 import { useAuthContext } from './authcontext';
 import { useProjectContext } from './ProjectContext';
 import type { Chat, Message } from '@/types/types_chat';
@@ -86,16 +85,19 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setError("A project and user must be set to create a chat.");
             return;
         }
-        const apiKey = getApiKey();
-        if (!apiKey) {
-            setError("API key not found.");
+
+        // The API key is now handled by the backend, but we need to ensure the user has one set.
+        if (!user.api_key_set) {
+            setError("API key not found. Please set it in your user settings.");
             return;
         }
 
         setIsCreatingChat(true);
         setError(null);
         try {
-            const newChat = await apiCreateChat(currentProject.id, { title, api_key: apiKey });
+            // The create chat endpoint might not need the api_key anymore if the backend handles it.
+            // We pass an empty key for now, but this should be confirmed with backend requirements.
+            const newChat = await apiCreateChat(currentProject.id, { title, api_key: '' });
             setChats(prev => [newChat, ...prev]);
             navigate(`/chats/${currentProject.id}/${newChat.short_id}`);
             return newChat;
@@ -137,8 +139,10 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             }
         }
 
-        const apiKey = getApiKey();
-        if (!apiKey || !currentProject) return;
+        if (!user || !user.api_key_set || !currentProject) {
+            setError('Cannot send message. Ensure you are logged in and have an API key set.');
+            return;
+        }
 
         const tempMessageId = `temp-${Date.now()}`;
         const newMessage: Message = { 
@@ -157,10 +161,11 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setError(null);
 
         try {
-            await apiPostMessage(currentChatId, { content: messageContent, api_key: apiKey, model_name: getModelName() || undefined });
-             if (currentProject) {
+            // Pass the user's preferred model from the auth context to the post message call
+            await apiPostMessage(currentChatId, { content: messageContent, api_key: '', model_name: user.preferred_model });
+            if (currentProject) {
                 await loadChats(currentProject.id);
-             }
+            }
         } catch (err: any) {
             setError(`Failed to send message: ${err.message}`);
             if (tempChatCreated && currentChatId) {

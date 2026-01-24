@@ -16,7 +16,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { getModelName, saveModelName } from '@/utils/apiKeyManager';
 import { updateUserApiKey } from '@/api/users'; 
 import { useAuthContext } from '@/context/authcontext'; 
 import { ModeToggle } from './ModeToggle';
@@ -26,60 +25,75 @@ interface SettingsDialogProps {
   onClose: () => void;
 }
 
+// A list of available AI models.
+const AVAILABLE_MODELS = [
+    "gemini-3-pro-preview", 
+    "gemini-3-flash-preview",
+];
+
 const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose }) => {
   const [apiKeyInput, setApiKeyInput] = useState('');
-  const [selectedModel, setSelectedModel] = useState('gemini-3-flash-preview');
+  const { user, refreshUser, updatePreferredModel } = useAuthContext();
+  // Initialize model from user context or fall back to a default
+  const [selectedModel, setSelectedModel] = useState(user?.preferred_model || AVAILABLE_MODELS[1]);
   const [isLoading, setIsLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const { user, refreshUser } = useAuthContext();
 
   const apiKeyIsSet = user?.api_key_set || false;
 
+  // When the dialog opens or the user context changes, update the selected model.
   useEffect(() => {
     if (isOpen) {
-        setStatusMessage(null); // Reset message on open
-        setApiKeyInput(''); // Clear input on open for security
-        const storedModel = getModelName();
-        if (storedModel) {
-            setSelectedModel(storedModel);
-        }
+        setStatusMessage(null); 
+        setApiKeyInput('');
+        // Set the model from the user's profile if available
+        setSelectedModel(user?.preferred_model || AVAILABLE_MODELS[1]);
     }
-  }, [isOpen]);
+  }, [isOpen, user]);
 
   const handleSave = async () => {
     setIsLoading(true);
     setStatusMessage(null);
-    let keyUpdateSuccess = true;
+    let closeDialog = true;
 
-    if (apiKeyInput) {
-        try {
-            const response = await updateUserApiKey(apiKeyInput);
-            console.log('API key update response:', response);
-            // The user object will be updated via the AuthContext, so we just need to trigger a refresh.
-        } catch (error) {
-            keyUpdateSuccess = false;
-            console.error("Failed to save API key:", error);
-            if (error instanceof Error) {
-                setStatusMessage(`Error: ${error.message}`);
-            } else {
-                setStatusMessage("An unknown error occurred while saving the API key.");
-            }
+    try {
+        // This will hold promises for all the async operations.
+        const updatePromises: Promise<any>[] = [];
+
+        // 1. Update API key if a new one is entered.
+        if (apiKeyInput.trim()) {
+            updatePromises.push(updateUserApiKey(apiKeyInput.trim()));
         }
-    }
 
-    // Always save the model locally
-    saveModelName(selectedModel);
+        // 2. Update preferred model if it has changed from what's in the context.
+        if (selectedModel !== user?.preferred_model) {
+            updatePromises.push(updatePreferredModel(selectedModel));
+        }
 
-    setIsLoading(false);
+        // If there are no updates to perform, just show a success message.
+        if (updatePromises.length === 0) {
+            setStatusMessage("No changes to save.");
+            setTimeout(() => onClose(), 1500);
+            return;
+        }
 
-    if (keyUpdateSuccess) {
-        setStatusMessage(apiKeyInput ? "API Key has been securely saved." : "Model has been saved.");
-        // Refresh user data to get the latest `api_key_set` status
+        await Promise.all(updatePromises);
+        
+        setStatusMessage("Settings updated successfully!");
+        
+        // Refresh user context to get the latest state from the backend.
         await refreshUser();
-        // Optionally close the dialog on success after a short delay
-        setTimeout(() => {
-            onClose();
-        }, 1500);
+
+    } catch (error) {
+        closeDialog = false;
+        console.error("Failed to save settings:", error);
+        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+        setStatusMessage(`Error: ${errorMessage}`);
+    } finally {
+        setIsLoading(false);
+        if (closeDialog) {
+            setTimeout(() => onClose(), 1500);
+        }
     }
   };
 
@@ -89,7 +103,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose }) => {
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
-            Manage your application settings here. Your API key is stored securely and is never exposed to the client.
+            Manage your application settings here. Your API key is stored securely.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-6 py-4">
@@ -110,18 +124,18 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose }) => {
           </div>
 
           <div>
-            <label htmlFor="ai-model" className="text-sm font-medium">
-              AI Model
-            </label>
+            <label htmlFor="ai-model" className="text-sm font-medium">Default AI Model</label>
             <Select value={selectedModel} onValueChange={setSelectedModel}>
               <SelectTrigger id="ai-model" className="mt-2">
                 <SelectValue placeholder="Select a model" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="gemini-3-pro-preview">gemini-3-pro-preview</SelectItem>
-                <SelectItem value="gemini-3-flash-preview">gemini-3-flash-preview</SelectItem>
+                {AVAILABLE_MODELS.map(model => (
+                    <SelectItem key={model} value={model}>{model}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
+            <p className='text-xs text-muted-foreground mt-2'>This is the default model for new chats.</p>
           </div>
           
           <div className="flex items-center justify-between">

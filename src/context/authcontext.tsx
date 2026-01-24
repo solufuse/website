@@ -12,6 +12,7 @@ export interface AuthenticatedUser extends Omit<UserProfile, 'email' | 'photoURL
   displayName: string | null; 
   photoURL: string | null;
   api_key_set?: boolean; // ADDED: To reflect the backend property
+  preferred_model?: string; // ADDED: The user's preferred model
 }
 
 interface AuthContextType {
@@ -21,6 +22,7 @@ interface AuthContextType {
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   updateUsername: (username: string) => Promise<void>;
+  updatePreferredModel: (model: string) => Promise<void>; // ADDED: New function for model preference
   refreshUser: () => Promise<void>; // New function to refresh user data
 }
 
@@ -31,6 +33,7 @@ const AuthContext = createContext<AuthContextType>({
     loginWithGoogle: async () => {},
     logout: async () => {},
     updateUsername: async () => {},
+    updatePreferredModel: async () => {}, // ADDED: Default empty function
     refreshUser: async () => {}, // Provide a default empty function
 });
 
@@ -145,6 +148,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // ADDED: New dedicated function to update the preferred model
+  const updatePreferredModel = async (model: string) => {
+    if (!user) throw new Error("User not authenticated");
+    try {
+      const updatedProfile = await updateMe({ preferred_model: model });
+      setUser(prevUser => {
+          if (!prevUser) return null;
+          return { ...prevUser, preferred_model: updatedProfile.preferred_model };
+      });
+    } catch (error) {
+      console.error("Failed to update preferred model", error);
+      throw error;
+    }
+  };
+
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser: User | null) => {
       if (firebaseUser) {
@@ -199,7 +217,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, loginWithGoogle, logout, updateUsername, refreshUser }}>
+    <AuthContext.Provider value={{ user, token, loading, loginWithGoogle, logout, updateUsername, updatePreferredModel, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

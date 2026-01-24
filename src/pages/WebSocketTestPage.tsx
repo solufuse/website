@@ -5,7 +5,6 @@ import Sidebar from '@/components/layout/Sidebar';
 import { useAuthContext } from '@/context/authcontext';
 import { useProjectContext } from '@/context/ProjectContext';
 import { useChatContext } from '@/context/ChatContext';
-import { getApiKey } from '@/utils/apiKeyManager';
 import ChatWebSocket from '@/api/chat_ws';
 import { createChat as apiCreateChat } from '@/api/chat';
 
@@ -68,15 +67,14 @@ const WebSocketTestPage = () => {
         addLog("Cannot create chat without a project.");
         return;
     }
-    const apiKey = getApiKey(); // This is for the old REST API, not the WebSocket
-    if (!apiKey) {
+    if (!user?.api_key_set) {
         addLog("API Key not found for REST operation.");
         return;
     }
 
     setIsCreating(true);
     try {
-        const newChat = await apiCreateChat(currentProject.id, { title: "New Test Chat", api_key: apiKey });
+        const newChat = await apiCreateChat(currentProject.id, { title: "New Test Chat", api_key: '' });
         await loadChats(currentProject.id);
         setActiveChatId(newChat.short_id);
     } catch (error: any) {
@@ -97,7 +95,7 @@ const WebSocketTestPage = () => {
     }
 
     addLog(`--- Attempting to connect (Project: ${projectId}, Chat: ${chatId}) ---`);
-    wsClient.current = new ChatWebSocket(projectId, chatId);
+    wsClient.current = new ChatWebSocket(projectId, chatId, user?.preferred_model);
 
     wsClient.current.on('status', (newStatus: string) => {
         setStatus(newStatus);
@@ -210,7 +208,7 @@ const WebSocketTestPage = () => {
                         <button onClick={connect} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" disabled={!chatId || !projectId}>
                         Connect
                         </button>
-                        <button onClick={disconnect} className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+                        <button onClick={disconnect} className="bg-red-500 hover:red-700 text-white font-bold py-2 px-4 rounded">
                         Disconnect
                         </button>
                     </div>
