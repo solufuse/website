@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Bot, Terminal } from 'lucide-react';
+import { Send, Bot, Terminal, ChevronDown } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
@@ -47,9 +47,11 @@ const ChatPageWS: React.FC = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [userScrolledUp, setUserScrolledUp] = useState(false);
 
     const messagesEndRef = useRef<null | HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const scrollAreaRef = useRef<null | HTMLDivElement>(null);
     
     const conversationsWithOwners = useMemo(() => {
         return chats.map(chat => ({
@@ -58,6 +60,10 @@ const ChatPageWS: React.FC = () => {
             owner: currentProject?.members.find(member => member.uid === chat.user_id)?.username || 'Unknown'
         }));
     }, [chats, currentProject]);
+
+    const scrollToBottom = (behavior: 'smooth' | 'auto' = 'smooth') => {
+        messagesEndRef.current?.scrollIntoView({ behavior });
+    };
 
     useEffect(() => {
         if (chatId && currentProject) {
@@ -77,7 +83,26 @@ const ChatPageWS: React.FC = () => {
 
     useEffect(() => { if (currentProject) { loadChatsForSidebar(currentProject.id); } }, [currentProject, loadChatsForSidebar]);
     useEffect(() => { setActiveChatId_classic(chatId ?? null); }, [chatId, setActiveChatId_classic]);
-    useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isStreaming]);
+    
+    useEffect(() => {
+        if (!userScrolledUp) {
+            scrollToBottom('auto');
+        }
+    }, [messages, isStreaming, userScrolledUp]);
+    
+    useEffect(() => {
+        const scrollViewport = scrollAreaRef.current?.querySelector('div[data-radix-scroll-area-viewport]');
+        const handleScroll = () => {
+            if (scrollViewport) {
+                const { scrollTop, scrollHeight, clientHeight } = scrollViewport;
+                const isAtBottom = scrollHeight - scrollTop <= clientHeight + 1; // +1 for pixel perfection
+                setUserScrolledUp(!isAtBottom);
+            }
+        };
+        scrollViewport?.addEventListener('scroll', handleScroll);
+        return () => scrollViewport?.removeEventListener('scroll', handleScroll);
+    }, []);
+
     useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
@@ -89,6 +114,7 @@ const ChatPageWS: React.FC = () => {
         if (!input.trim()) return;
         sendWsMessage(input);
         setInput('');
+        setUserScrolledUp(false);
     };
 
     const handleNewConversation = async () => {
@@ -111,8 +137,8 @@ const ChatPageWS: React.FC = () => {
                 <Header user={user} onToggleSettings={() => setIsSettingsOpen(true)} onOpenProfile={() => setIsProfileOpen(true)} onLogin={loginWithGoogle} onLogout={logout} currentProject={currentProject} />
                 <StatusIndicator status={connectionStatus} error={wsError} isLoading={isWsLoading && messages.length === 0} />
                 <div className="flex flex-1 overflow-hidden">
-                    <div className="flex flex-1 flex-col min-w-0">
-                        <ScrollArea className="flex-1">
+                    <div className="flex flex-1 flex-col min-w-0 relative">
+                        <ScrollArea className="flex-1" ref={scrollAreaRef}>
                             <main className="p-4">
                                 <div className="max-w-4xl mx-auto">
                                     {!currentProject || !chatId ? (
@@ -171,6 +197,18 @@ const ChatPageWS: React.FC = () => {
                                 </div>
                             </main>
                         </ScrollArea>
+                        {userScrolledUp && (
+                            <Button
+                                size="icon"
+                                className="absolute bottom-24 right-10 rounded-full"
+                                onClick={() => {
+                                    setUserScrolledUp(false);
+                                    scrollToBottom('smooth');
+                                }}
+                            >
+                                <ChevronDown className="h-5 w-5" />
+                            </Button>
+                        )}
                         <footer className="p-4">
                             <div className="max-w-4xl mx-auto">
                                 <div className="relative flex w-full items-end space-x-2 p-2 rounded-lg bg-muted">
