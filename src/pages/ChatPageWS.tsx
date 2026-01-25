@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Bot, Terminal, ChevronDown } from 'lucide-react';
+import { Send, Bot, Terminal, ChevronDown, FolderOpen, Upload, Plus, X } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
@@ -12,13 +12,16 @@ import { useAuthContext } from '@/context/authcontext';
 import { useProjectContext } from '@/context/ProjectContext';
 import { useChatContext } from '@/context/ChatContext';
 import { useChatWSContext } from '@/context/ChatWSContext';
+import { uploadFiles } from '@/api/files';
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Message } from '@/types/types_chat';
 import type { ProjectMember } from '@/types/types_projects';
 
 const MarkdownRenderer = lazy(() => import('@/components/chat/MarkdownRenderer'));
 const SettingsDialog = lazy(() => import('@/components/chat/SettingsDialog'));
 const ProfileDialog = lazy(() => import('@/components/user/ProfileDialog'));
+const FileExplorer = lazy(() => import('@/components/layout/FileExplorer'));
 
 const StatusIndicator: React.FC<{ status: string; error: string | null; isLoading: boolean }> = ({ status, error, isLoading }) => {
     let bgColor = 'bg-gray-700';
@@ -48,10 +51,14 @@ const ChatPageWS: React.FC = () => {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [userScrolledUp, setUserScrolledUp] = useState(false);
+    const [isFileExplorerOpen, setFileExplorerOpen] = useState(false);
+    const [fileExplorerKey, setFileExplorerKey] = useState(Date.now());
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     const messagesEndRef = useRef<null | HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const scrollAreaRef = useRef<null | HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     
     const conversationsWithOwners = useMemo(() => {
         return chats.map(chat => ({
@@ -211,6 +218,41 @@ const ChatPageWS: React.FC = () => {
                         )}
                         <footer className="p-4">
                             <div className="max-w-4xl mx-auto">
+                               <div className="relative mb-2">
+                                    <div className="flex justify-center">
+                                        <TooltipProvider>
+                                            <div className="relative">
+                                                {isMenuOpen && (
+                                                    <div className="absolute bottom-full mb-2 w-48 bg-background border rounded-lg shadow-lg z-10">
+                                                        <Button onClick={() => { fileInputRef.current?.click(); setIsMenuOpen(false); }} disabled={!currentProject} variant="ghost" className="w-full justify-start"><Upload className="h-4 w-4 mr-2" />Upload File</Button>
+                                                        <Button onClick={() => { setFileExplorerOpen(true); setIsMenuOpen(false); }} disabled={!currentProject} variant="ghost" className="w-full justify-start"><FolderOpen className="h-4 w-4 mr-2" />Browse Files</Button>
+                                                    </div>
+                                                )}
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button onClick={() => setIsMenuOpen(!isMenuOpen)} variant="outline" size="icon" className="rounded-full">
+                                                            {isMenuOpen ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent><p>{isMenuOpen ? 'Close Menu' : 'Open Menu'}</p></TooltipContent>
+                                                </Tooltip>
+                                            </div>
+                                        </TooltipProvider>
+                                    </div>
+                                </div>
+                                <input type="file" ref={fileInputRef} onChange={async (event: React.ChangeEvent<HTMLInputElement>) => {
+                                    const files = event.target.files;
+                                    if (files && files.length > 0 && currentProject) {
+                                        try {
+                                            await uploadFiles(Array.from(files), { projectId: currentProject.id });
+                                            setFileExplorerKey(Date.now());
+                                            alert('Files uploaded successfully!');
+                                        } catch (error) {
+                                            console.error("Failed to upload files:", error);
+                                            alert("Sorry, we couldn't upload the files.");
+                                        }
+                                    }
+                                }} multiple className="hidden" />
                                 <div className="relative flex w-full items-end space-x-2 p-2 rounded-lg bg-muted">
                                     <Textarea ref={textareaRef} id="message" placeholder="Type your message..." className="flex-1 bg-transparent border-none focus:ring-0 focus:outline-none resize-none overflow-y-auto max-h-48 text-base leading-6 pr-12" autoComplete="off" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} disabled={!currentProject || isWsLoading || connectionStatus !== 'Connected'} rows={1} />
                                     <Button type="submit" size="icon" onClick={handleSend} disabled={!input.trim() || isWsLoading || connectionStatus !== 'Connected'} className="rounded-full absolute bottom-4 right-4">
@@ -220,6 +262,17 @@ const ChatPageWS: React.FC = () => {
                             </div>
                         </footer>
                     </div>
+                     <Suspense fallback={loadingComponent}>
+                        {currentProject && isFileExplorerOpen &&
+                            <FileExplorer
+                                refreshTrigger={fileExplorerKey}
+                                isOpen={isFileExplorerOpen}
+                                onClose={() => setFileExplorerOpen(false)}
+                                projectId={currentProject.id}
+                                currentProject={currentProject}
+                            />
+                        }
+                    </Suspense>
                 </div>
             </div>
             <Suspense fallback={loadingComponent}>
