@@ -22,6 +22,7 @@ const ChatWSContext = createContext<ChatWSContextType | undefined>(undefined);
 export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const { user } = useAuthContext();
     const wsConnection = useRef<WebSocketConnection | null>(null);
+    const optimisticMessageIdRef = useRef<string | null>(null); // Ref to hold temp user message ID
 
     const [messages, setMessages] = useState<Message[]>([]);
     const [isStreaming, setIsStreaming] = useState(false);
@@ -47,8 +48,21 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
             case 'message':
                 setMessages(prev => {
-                    const filteredPrev = prev.filter(m => m.id !== 'assistant-streaming' && m.id !== event.data.id);
-                    return [...filteredPrev, event.data];
+                    // --- CORRECTED: Handle optimistic message replacement ---
+                    // If this is a user message and it matches our optimistic one, replace it.
+                    if (event.data.role === 'user' && optimisticMessageIdRef.current) {
+                        const newMessages = prev.map(m => 
+                            m.id === optimisticMessageIdRef.current ? event.data : m
+                        );
+                        optimisticMessageIdRef.current = null; // Clear the ref
+                        return newMessages;
+                    } 
+                    // For assistant messages or other cases, filter and add.
+                    else {
+                        const filteredPrev = prev.filter(m => m.id !== 'assistant-streaming' && m.id !== event.data.id);
+                        return [...filteredPrev, event.data];
+                    }
+                    // --- END OF FIX ---
                 });
                 break;
 
@@ -98,14 +112,12 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         
         wsConnection.current?.closeConnection(); 
 
-        // --- CORRECTED: Reset ALL relevant states for a new connection ---
         console.log(`Connecting to WebSocket for chat ${chatId}. Resetting state.`);
         setIsLoading(true);
-        setIsStreaming(false); // <--- THE FIX: Reset streaming state
+        setIsStreaming(false); 
         setError(null);
         setMessages([]);
         setConnectionStatus('Disconnected');
-        // --- END OF FIX ---
 
         const newConnection = new WebSocketConnection({
             project_id: projectId,
@@ -137,15 +149,18 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     const sendMessage = useCallback((messageContent: string) => {
         if (wsConnection.current?.isConnected() && user) {
+            // --- CORRECTED: Create and track optimistic message ---
             const optimisticMessage: Message = {
-                id: `user-${Date.now()}`,
+                id: `user-optimistic-${Date.now()}`,
                 content: messageContent,
                 role: 'user',
                 timestamp: new Date().toISOString(),
                 user_id: user.uid,
             };
+            optimisticMessageIdRef.current = optimisticMessage.id; // Track its ID
             setMessages(prev => [...prev, optimisticMessage]);
             wsConnection.current.sendMessage(messageContent);
+            // --- END OF FIX ---
         } else {
             setError('Cannot send message. WebSocket is not connected.');
         }
