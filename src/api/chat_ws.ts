@@ -9,7 +9,8 @@ export type WebSocketEvent =
   | { type: 'status'; data: string }
   | { type: 'warning'; data: string }
   | { type: 'error'; data: string }
-  | { type: 'event'; data: 'end_of_stream' };
+  | { type: 'event'; data: 'end_of_stream' }
+  | { type: 'full_history'; data: any[] }; // Added this line
 
 export type WebSocketConnectionOptions = {
     project_id: string;

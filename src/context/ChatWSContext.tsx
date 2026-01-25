@@ -34,28 +34,35 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         switch (event.type) {
             case 'status':
                 setConnectionStatus(event.data);
-                if (event.data === 'connected') {
+                if (event.data === 'connected' || event.data.startsWith('User')) {
                     setIsLoading(false);
                 }
                 break;
+            
+            // MODIFIED: Handle the specific event for receiving the full chat history
+            case 'full_history': 
+                setMessages(event.data);
+                setIsLoading(false);
+                break;
 
             case 'message':
-                // If data is an array, it's the chat history
-                if (Array.isArray(event.data)) {
-                    setMessages(event.data);
-                } else {
-                    // Otherwise, it's a single new message.
-                    // Replace the streaming message with the final one.
-                    setMessages(prev => [...prev.filter(m => m.id !== 'assistant-streaming'), event.data]);
-                }
-                setIsLoading(false);
+                // A single new message from another user or the AI's final response
+                setMessages(prev => {
+                    // Avoid duplicates if a streaming message is being replaced
+                    const filteredPrev = prev.filter(m => m.id !== 'assistant-streaming' && m.id !== event.data.id);
+                    return [...filteredPrev, event.data];
+                });
                 break;
 
             case 'chunk':
                 if (!isStreaming) {
                     setIsStreaming(true);
-                    // Add a placeholder for the streaming response
-                    setMessages(prev => [...prev, { id: 'assistant-streaming', role: 'assistant', content: '', timestamp: new Date().toISOString() }]);
+                    // Add a placeholder for the streaming response if it doesn't exist
+                    setMessages(prev => 
+                        prev.some(m => m.id === 'assistant-streaming') 
+                        ? prev 
+                        : [...prev, { id: 'assistant-streaming', role: 'assistant', content: '', timestamp: new Date().toISOString() }]
+                    );
                 }
                 // Append chunk to the streaming message
                 setMessages(prev => prev.map(m => 
@@ -68,7 +75,6 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             case 'event':
                 if (event.data === 'end_of_stream') {
                     setIsStreaming(false);
-                    // The final message is expected to arrive via a 'message' event
                 }
                 break;
 
