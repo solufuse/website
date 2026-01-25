@@ -1,6 +1,6 @@
 
 import { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 
 // Eagerly load core components for a better user experience
 import ChatPage from "@/pages/ChatPage";
@@ -20,7 +20,6 @@ const App = () => {
   );
 
   return (
-    <Router>
       <Suspense fallback={loading}>
         <Routes>
           {/* Default route to chat page */}
@@ -44,7 +43,6 @@ const App = () => {
           <Route path="/chat/:projectId/:chatId/:messageId" element={<Navigate to="/chats/:projectId/:chatId/:messageId" replace />} />
         </Routes>
       </Suspense>
-    </Router>
   );
 };
 
