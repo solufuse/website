@@ -31,6 +31,7 @@ const ChatPage: React.FC = () => {
         activeChatId,
         isLoading,
         isCreatingChat,
+        isStreaming, // New state from context
         error,
         loadChats,
         createChat,
@@ -300,7 +301,7 @@ const ChatPage: React.FC = () => {
                                                     </div>
                                                 );
                                             })}
-                                            {isLoading && (
+                                            {(isLoading || isStreaming) && (
                                                 <div className="flex items-center justify-start gap-3 mt-4 ml-12">
                                                     <div className="flex items-start gap-3">
                                                         <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>AI</AvatarFallback></Avatar>
@@ -374,10 +375,10 @@ const ChatPage: React.FC = () => {
                                         value={input}
                                         onChange={(e) => setInput(e.target.value)}
                                         onKeyDown={handleKeyDown}
-                                        disabled={!currentProject || isLoading}
+                                        disabled={!currentProject || isLoading || isStreaming} // Updated disabled state
                                         rows={1}
                                     />
-                                    <Button type="submit" size="icon" onClick={handleSend} disabled={!input.trim() || isLoading} className="rounded-full absolute bottom-4 right-4">
+                                    <Button type="submit" size="icon" onClick={handleSend} disabled={!input.trim() || isLoading || isStreaming} className="rounded-full absolute bottom-4 right-4"> // Updated disabled state
                                         <Send className={isSidebarOpen ? "h-4 w-4" : "h-5 w-5"} /><span className="sr-only">Send</span>
                                     </Button>
                                 </div>

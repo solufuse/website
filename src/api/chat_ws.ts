@@ -1,169 +1,99 @@
-import EventEmitter from 'eventemitter3';
+
 import { getAuthToken } from '@/api/getAuthToken';
-import { WS_BASE_URL } from '@/config/apiConfig';
 
-class ChatWebSocket extends EventEmitter {
+const WS_BASE_URL = 'wss://api.solufuse.com/ws/v1/chat';
+
+export type WebSocketEvent = 
+  | { type: 'message'; data: any }
+  | { type: 'chunk'; data: string }
+  | { type: 'status'; data: string }
+  | { type: 'warning'; data: string }
+  | { type: 'error'; data: string }
+  | { type: 'event'; data: 'end_of_stream' };
+
+export type WebSocketConnectionOptions = {
+    project_id: string;
+    chat_id: string;
+    model?: string;
+    onOpen?: () => void;
+    onClose?: (code: number, reason: string) => void;
+    onEvent: (event: WebSocketEvent) => void;
+    onError?: (error: any) => void;
+};
+
+export class WebSocketConnection {
     private ws: WebSocket | null = null;
-    private readonly url: string;
-    private readonly model: string | null; // The model is now passed in and is immutable for this connection instance.
-    private connectionPromise: Promise<void> | null = null;
-    private connectionPromise_resolved = false;
-    private isCancelled = false;
-    private reconnectAttempts = 0;
-    private maxReconnectAttempts = 5;
-    private reconnectInterval = 3000;
+    private options: WebSocketConnectionOptions;
+    private connectionUrl: string;
 
-    constructor(projectId: string, chatId: string, model?: string) {
-        super();
-        this.url = `${WS_BASE_URL}/ws/v1/chat/${projectId}/${chatId}`;
-        // The model for this session is determined at instantiation.
-        this.model = model || null; 
-        console.log(`ChatWebSocket initialized for ${this.url} with model: ${this.model || '[Not Specified]'}`);
+    constructor(options: WebSocketConnectionOptions) {
+        this.options = options;
+        this.connectionUrl = `${WS_BASE_URL}/${options.project_id}/${options.chat_id}`;
     }
 
-    private async performConnection() {
-        if (this.ws) return;
-
-        console.log(`Attempting to connect to: ${this.url}`);
-        this.emit('status', 'connecting');
-
-        const token = await getAuthToken();
-        if (!token) {
-            this.emit('error', new Error('Authentication token not available. User might be logged out.'));
-            this.emit('status', 'disconnected');
+    public connect = async () => {
+        if (this.ws) {
+            console.warn("WebSocket is already connected or connecting.");
             return;
         }
 
         try {
-            this.ws = new WebSocket(this.url);
+            const token = await getAuthToken();
+            this.ws = new WebSocket(this.connectionUrl);
 
-            this.connectionPromise = new Promise((resolve, reject) => {
-                const resetPromiseState = () => {
-                    this.connectionPromise_resolved = true;
-                };
+            this.ws.onopen = () => {
+                console.log("WebSocket connection established.");
+                // Send authentication payload
+                this.ws?.send(JSON.stringify({ 
+                    token: token,
+                    model: this.options.model 
+                }));
+                this.options.onOpen?.();
+            };
 
-                this.ws!.onopen = () => {
-                    console.log('WebSocket connection opened. Sending authentication...');
-                    // The payload now includes the model passed during construction.
-                    const authPayload = { token: token, model: this.model };
-                    this.ws!.send(JSON.stringify(authPayload));
-                    this.emit('status', 'authenticating');
-                };
+            this.ws.onmessage = (event) => {
+                try {
+                    const parsedEvent: WebSocketEvent = JSON.parse(event.data);
+                    this.options.onEvent(parsedEvent);
+                } catch (error) {
+                    console.error("Failed to parse WebSocket message:", error);
+                    this.options.onError?.(error);
+                }
+            };
 
-                this.ws!.onmessage = (event: MessageEvent) => {
-                    try {
-                        const data = JSON.parse(event.data);
+            this.ws.onerror = (event) => {
+                console.error("WebSocket error:", event);
+                this.options.onError?.(event);
+            };
 
-                        if (this.connectionPromise && !this.connectionPromise_resolved) {
-                            if (data.status === 'authenticated') {
-                                console.log('WebSocket authentication successful:', data.message);
-                                this.emit('open', event);
-                                this.emit('status', 'connected');
-                                this.reconnectAttempts = 0;
-                                resetPromiseState();
-                                resolve();
-                                return;
-                            } else if (data.error) {
-                                console.error(`Authentication failed: ${data.error}`);
-                                const authError = new Error(`Authentication failed: ${data.error}`);
-                                this.emit('error', authError);
-                                resetPromiseState();
-                                reject(authError);
-                                this.close();
-                                return;
-                            }
-                        }
+            this.ws.onclose = (event) => {
+                console.log(`WebSocket connection closed: ${event.reason} (Code: ${event.code})`);
+                this.options.onClose?.(event.code, event.reason);
+                this.ws = null;
+            };
 
-                        if (data.chunk) {
-                            this.emit('message', data.chunk);
-                        } else if (data.event === 'end_of_stream') {
-                            this.emit('end');
-                        } else if (data.error) {
-                            console.error(`Received error from WebSocket: ${data.error}`);
-                            this.emit('error', new Error(data.error));
-                        } else if (data.warning) {
-                            console.warn(`Received warning from WebSocket: ${data.warning}`);
-                            this.emit('warning', data.warning);
-                        } else if (data.status === 'authenticated') {
-                            // Already authenticated, ignore.
-                        } else {
-                           console.warn("Received unhandled WebSocket message structure:", data);
-                           this.emit('unhandled_message', data);
-                        }
-
-                    } catch (e) {
-                        console.error("Failed to parse WebSocket JSON message or unexpected format:", event.data, e);
-                        this.emit('error', new Error(`Failed to parse message: ${event.data}`));
-                    }
-                };
-
-                this.ws!.onerror = (event) => {
-                    console.error('WebSocket error:', event);
-                    const error = new Error('WebSocket connection error.');
-                    this.emit('error', error);
-                    if (!this.connectionPromise_resolved) {
-                        resetPromiseState();
-                        reject(error);
-                    }
-                };
-
-                this.ws!.onclose = (event) => {
-                    console.log(`WebSocket closed. Code: ${event.code}, Reason: ${event.reason}`);
-                    this.ws = null;
-                    this.connectionPromise = null;
-                    this.connectionPromise_resolved = false;
-
-                    const nonRetriableCodes = [1008]; 
-                    if (this.isCancelled || nonRetriableCodes.includes(event.code)) {
-                        this.emit('status', 'disconnected');
-                        this.emit('close', event);
-                    } else if (this.reconnectAttempts < this.maxReconnectAttempts) {
-                        this.reconnectAttempts++;
-                        this.emit('status', 'reconnecting');
-                        console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
-                        setTimeout(() => this.performConnection(), this.reconnectInterval);
-                    } else {
-                        console.log("Max reconnect attempts reached.");
-                        this.emit('status', 'disconnected');
-                        this.emit('close', event);
-                    }
-                };
-            });
-
-            await this.connectionPromise;
-
-        } catch (error: any) {
-            console.error('WebSocket connection setup failed:', error.message);
-            this.emit('error', error);
-            this.emit('status', 'disconnected');
+        } catch (error) {
+            console.error("Failed to initialize WebSocket connection:", error);
+            this.options.onError?.(error);
         }
     }
 
-    async connect(): Promise<void> {
-        this.isCancelled = false;
-        if (!this.connectionPromise) {
-            this.connectionPromise_resolved = false;
-            this.performConnection();
-        }
-        return this.connectionPromise || Promise.reject("Connection failed to initialize");
-    }
-
-    sendMessage(content: string) {
+    public sendMessage = (content: string) => {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            const messagePayload = { content };
-            this.ws.send(JSON.stringify(messagePayload));
+            this.ws.send(JSON.stringify({ content }));
         } else {
-            console.error('WebSocket is not connected.');
-            this.emit('error', new Error('Cannot send message, WebSocket is not connected.'));
+            console.error("WebSocket is not connected. Cannot send message.");
+            this.options.onError?.(new Error("WebSocket not connected."));
         }
     }
 
-    close() {
-        this.isCancelled = true;
+    public closeConnection = (code: number = 1000, reason: string = "Client closed connection") => {
         if (this.ws) {
-            this.ws.close(1000, "Client requested disconnection");
+            this.ws.close(code, reason);
         }
+    }
+
+    public isConnected = (): boolean => {
+        return this.ws?.readyState === WebSocket.OPEN;
     }
 }
-
-export default ChatWebSocket;

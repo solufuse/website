@@ -5,7 +5,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import { useAuthContext } from '@/context/authcontext';
 import { useProjectContext } from '@/context/ProjectContext';
 import { useChatContext } from '@/context/ChatContext';
-import ChatWebSocket from '@/api/chat_ws';
+import { WebSocketConnection, WebSocketEvent } from '@/api/chat_ws';
 import { createChat as apiCreateChat } from '@/api/chat';
 
 const SettingsDialog = lazy(() => import('@/components/chat/SettingsDialog'));
@@ -22,8 +22,8 @@ const WebSocketTestPage = () => {
   const [projectId, setProjectId] = useState('');
   const [message, setMessage] = useState('');
   const [log, setLog] = useState<string[]>([]);
-  const [status, setStatus] = useState('Disconnected');
-  const wsClient = useRef<ChatWebSocket | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState('Disconnected');
+  const wsConnection = useRef<WebSocketConnection | null>(null);
 
   const { user, loginWithGoogle, logout, updateUsername } = useAuthContext();
   const { currentProject } = useProjectContext();
@@ -67,10 +67,6 @@ const WebSocketTestPage = () => {
         addLog("Cannot create chat without a project.");
         return;
     }
-    if (!user?.api_key_set) {
-        addLog("API Key not found for REST operation.");
-        return;
-    }
 
     setIsCreating(true);
     try {
@@ -84,71 +80,63 @@ const WebSocketTestPage = () => {
     }
   };
 
-  const connect = async () => {
+  const connect = () => {
     if (!chatId || !projectId) {
       addLog('--- Project ID and Chat ID are required ---');
       return;
     }
     
-    if (wsClient.current) {
-      wsClient.current.close();
+    if (wsConnection.current) {
+      wsConnection.current.closeConnection();
     }
 
     addLog(`--- Attempting to connect (Project: ${projectId}, Chat: ${chatId}) ---`);
-    wsClient.current = new ChatWebSocket(projectId, chatId, user?.preferred_model);
-
-    wsClient.current.on('status', (newStatus: string) => {
-        setStatus(newStatus);
-        addLog(`Status: ${newStatus}`);
-    });
-
-    wsClient.current.on('open', () => {
-        addLog('--- Connection Opened and Authenticated ---');
-    });
-
-    wsClient.current.on('message', (data: string) => {
-        addLog(`[SERVER]: ${data}`);
-    });
-
-    wsClient.current.on('error', (error: Error) => {
-        addLog(`--- ERROR: ${error.message} ---`);
-    });
-
-    wsClient.current.on('close', (event: CloseEvent) => {
-        addLog(`--- Connection Closed (Code: ${event.code}) ---`);
-    });
     
-    wsClient.current.on('end', () => {
-        addLog('--- <<END_OF_STREAM>> ---');
-    });
+    const options = {
+        project_id: projectId,
+        chat_id: chatId,
+        model: user?.preferred_model,
+        onOpen: () => {
+            setConnectionStatus('Connected');
+            addLog('--- Connection Opened and Authenticated ---');
+        },
+        onClose: (code: number, reason: string) => {
+            setConnectionStatus(`Disconnected: ${reason} (Code: ${code})`);
+            addLog(`--- Connection Closed (Code: ${code}, Reason: ${reason}) ---`);
+        },
+        onEvent: (event: WebSocketEvent) => {
+            const dataString = typeof event.data === 'object' ? JSON.stringify(event.data, null, 2) : event.data;
+            addLog(`[${event.type.toUpperCase()}]: ${dataString}`);
+        },
+        onError: (error: any) => {
+            addLog(`--- ERROR: ${error.message || 'An unknown error occurred.'} ---`);
+        },
+    };
 
-    try {
-      await wsClient.current.connect();
-    } catch (error: any) {
-      addLog(`--- Connection failed: ${error.message} ---`);
-    }
+    wsConnection.current = new WebSocketConnection(options);
+    wsConnection.current.connect();
   };
 
   const disconnect = () => {
-    if (wsClient.current) {
-      wsClient.current.close();
+    if (wsConnection.current) {
+      wsConnection.current.closeConnection();
     }
   };
 
   const sendMessage = () => {
-    if (wsClient.current && status === 'connected') {
+    if (wsConnection.current?.isConnected() && message.trim()) {
       addLog(`[CLIENT]: ${message}`);
-      wsClient.current.sendMessage(message);
+      wsConnection.current.sendMessage(message);
       setMessage('');
     } else {
-      addLog('--- Not connected --- ');
+      addLog('--- Not connected or message is empty --- ');
     }
   };
 
   useEffect(() => {
     return () => {
-      if (wsClient.current) {
-        wsClient.current.close();
+      if (wsConnection.current) {
+        wsConnection.current.closeConnection();
       }
     };
   }, []);
@@ -186,7 +174,7 @@ const WebSocketTestPage = () => {
                 <div className="container mx-auto">
                     <h1 className="text-2xl font-bold mb-4">WebSocket Test Page</h1>
                     <div className="bg-gray-800 p-4 rounded-lg mb-4">
-                        <p className="font-mono">Status: <span className={status === 'connected' ? 'text-green-500' : 'text-red-500'}>{status}</span></p>
+                        <p className="font-mono">Status: <span className={connectionStatus === 'Connected' ? 'text-green-500' : 'text-red-500'}>{connectionStatus}</span></p>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <input
@@ -205,10 +193,10 @@ const WebSocketTestPage = () => {
                         />
                     </div>
                     <div className="flex gap-4 mb-4">
-                        <button onClick={connect} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" disabled={!chatId || !projectId}>
+                        <button onClick={connect} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" disabled={!chatId || !projectId || connectionStatus === 'Connected'}>
                         Connect
                         </button>
-                        <button onClick={disconnect} className="bg-red-500 hover:red-700 text-white font-bold py-2 px-4 rounded">
+                        <button onClick={disconnect} className="bg-red-500 hover:red-700 text-white font-bold py-2 px-4 rounded" disabled={connectionStatus !== 'Connected'}>
                         Disconnect
                         </button>
                     </div>
@@ -221,7 +209,7 @@ const WebSocketTestPage = () => {
                         onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                         className="flex-grow p-2 rounded bg-gray-700 text-white"
                         />
-                        <button onClick={sendMessage} className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded" disabled={status !== 'connected'}>
+                        <button onClick={sendMessage} className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded" disabled={connectionStatus !== 'Connected'}>
                         Send
                         </button>
                     </div>
