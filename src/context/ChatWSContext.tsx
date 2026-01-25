@@ -34,12 +34,9 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         switch (event.type) {
             case 'status':
                 const statusMessage = event.data;
-                // Interpret the backend status message to set a machine-readable state.
                 if (statusMessage.includes('Agent initialized')) {
                     setConnectionStatus('Connected');
                     setIsLoading(false);
-                } else if (statusMessage.includes('authenticated')) {
-                    // Still connecting, but making progress. No state change needed yet.
                 }
                 break;
             
@@ -96,19 +93,19 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const connect = useCallback((projectId: string, chatId: string) => {
         if (!user) return;
         if (wsConnection.current?.isConnected()) {
-             // If we're already connected to the same chat, do nothing.
             if (wsConnection.current.getChatId() === chatId) return;
         }
         
-        console.log(`Connecting to WebSocket for chat ${chatId}`);
-        
-        wsConnection.current?.closeConnection(); // Close any existing connection
+        wsConnection.current?.closeConnection(); 
 
-        // Reset state for the new connection
+        // --- CORRECTED: Reset ALL relevant states for a new connection ---
+        console.log(`Connecting to WebSocket for chat ${chatId}. Resetting state.`);
         setIsLoading(true);
+        setIsStreaming(false); // <--- THE FIX: Reset streaming state
         setError(null);
         setMessages([]);
         setConnectionStatus('Disconnected');
+        // --- END OF FIX ---
 
         const newConnection = new WebSocketConnection({
             project_id: projectId,

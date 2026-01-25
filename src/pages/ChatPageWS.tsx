@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Bot, XCircle, AlertTriangle } from 'lucide-react';
+import { Send, Bot, XCircle } from 'lucide-react'; // CORRECTED: Removed AlertTriangle
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { useAuthContext } from '@/context/authcontext';
@@ -20,6 +20,47 @@ import type { ProjectMember } from '@/types/types_projects';
 const MarkdownRenderer = lazy(() => import('@/components/chat/MarkdownRenderer'));
 const SettingsDialog = lazy(() => import('@/components/chat/SettingsDialog'));
 const ProfileDialog = lazy(() => import('@/components/user/ProfileDialog'));
+
+// --- NEW: Status Indicator Component ---
+const StatusIndicator: React.FC<{ status: string; error: string | null; isLoading: boolean }> = ({ status, error, isLoading }) => {
+    let bgColor = 'bg-gray-700'; // Default/neutral color
+    let text = `Status: ${status}`;
+
+    if (error) {
+        bgColor = 'bg-red-500';
+        text = `Error: ${error}`;
+    } else if (isLoading) {
+        bgColor = 'bg-yellow-500';
+        text = "Loading History...";
+    } else {
+        switch (status) {
+            case 'Connected':
+                bgColor = 'bg-green-600';
+                text = 'Live connection active';
+                break;
+            case 'Connecting':
+                bgColor = 'bg-yellow-500';
+                text = 'Connecting to live chat...';
+                break;
+            case 'Disconnected':
+                bgColor = 'bg-gray-500';
+                text = 'Disconnected';
+                break;
+        }
+    }
+    
+    // Do not render anything if successfully connected and not loading
+    if (status === 'Connected' && !isLoading && !error) {
+        return null;
+    }
+
+    return (
+        <div className={`w-full p-1 text-center text-white text-xs ${bgColor} transition-all duration-300`}>
+            {text}
+        </div>
+    );
+};
+
 
 const ChatPageWS: React.FC = () => {
     // --- CONTEXTS & HOOKS ---
@@ -50,7 +91,6 @@ const ChatPageWS: React.FC = () => {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     
     // --- EFFECTS ---
-    // Connect WebSocket when chat ID changes
     useEffect(() => {
         if (chatId && currentProject) {
             connect(currentProject.id, chatId);
@@ -63,7 +103,6 @@ const ChatPageWS: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [chatId, currentProject]);
 
-    // Set project from URL
     useEffect(() => {
         if (projectId) {
             setCurrentProjectById(projectId);
@@ -73,24 +112,20 @@ const ChatPageWS: React.FC = () => {
         }
     }, [projectId, setCurrentProjectById]);
 
-    // Load sidebar chats when project changes
     useEffect(() => {
         if (currentProject) {
             loadChatsForSidebar(currentProject.id);
         }
     }, [currentProject, loadChatsForSidebar]);
     
-    // Set active chat from URL
     useEffect(() => {
         setActiveChatId_classic(chatId ?? null);
     }, [chatId, setActiveChatId_classic]);
 
-    // Scroll to bottom on new message or stream chunk
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, isStreaming]);
 
-    // Adjust textarea height
     useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
@@ -159,18 +194,16 @@ const ChatPageWS: React.FC = () => {
                     onLogout={logout}
                     currentProject={currentProject}
                 />
+                {/* --- MODIFIED: Added Status Indicator -- */}
+                <StatusIndicator status={connectionStatus} error={wsError} isLoading={isWsLoading && messages.length === 0} />
+                
                 <div className="flex flex-1 overflow-hidden">
                     <div className="flex flex-1 flex-col min-w-0">
                         <ScrollArea className="flex-1">
                             <main className="p-4">
                             <TooltipProvider>
                                 <div className="max-w-4xl mx-auto">
-                                    {wsError && (
-                                        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4" role="alert">
-                                            <p className="font-bold flex items-center"><AlertTriangle className="h-5 w-5 mr-2"/>Error</p>
-                                            <p>{wsError}</p>
-                                        </div>
-                                    )}
+                                    {/* Combined wsError and StatusIndicator; wsError display can be removed if status indicator is preferred */}
                                     {!currentProject ? (
                                          <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)]"><Bot size={72} /><p className="text-2xl mt-4">Welcome to Solufuse (WS)</p><p className='mt-2'>Please select or create a project.</p></div>
                                     ) : !chatId ? (
@@ -213,7 +246,7 @@ const ChatPageWS: React.FC = () => {
                                                     </div>
                                                 );
                                             })}
-                                            {(isWsLoading || isStreaming) && (
+                                            {(isWsLoading && messages.length === 0 || isStreaming) && (
                                                 <div className="flex items-center justify-start gap-3 mt-4 ml-12">
                                                     <div className="flex items-start gap-3">
                                                         <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>AI</AvatarFallback></Avatar>
