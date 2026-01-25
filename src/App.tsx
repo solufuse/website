@@ -4,7 +4,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 
 // Eagerly load core components for a better user experience
 import ChatPage from "@/pages/ChatPage";
-import ChatPageWS from "@/pages/ChatPageWS";
+import ChatPageOld from "@/pages/ChatPageOld";
 
 // Lazy load secondary pages
 // const HomePage = lazy(() => import('@/pages/HomePage'));
@@ -25,11 +25,11 @@ const App = () => {
           {/* Default route to chat page */}
           <Route path="/" element={<Navigate to="/chats" replace />} />
           
-          {/* Legacy REST-based Chat Route */}
+          {/* New WebSocket-based Chat Route */}
           <Route path="/chats/:projectId?/:chatId?/:messageId?" element={<ChatPage />} />
 
-          {/* New WebSocket-based Chat Route */}
-          <Route path="/chats-ws/:projectId?/:chatId?/:messageId?" element={<ChatPageWS />} />
+          {/* Legacy REST-based Chat Route */}
+          <Route path="/chat-old/:projectId?/:chatId?/:messageId?" element={<ChatPageOld />} />
 
           {/* Other application routes */}
           <Route path="/ws-test" element={<WebSocketTestPage />} />
