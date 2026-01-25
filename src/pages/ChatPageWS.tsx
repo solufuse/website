@@ -22,20 +22,23 @@ const SettingsDialog = lazy(() => import('@/components/chat/SettingsDialog'));
 const ProfileDialog = lazy(() => import('@/components/user/ProfileDialog'));
 
 const ChatPageWS: React.FC = () => {
-    // --- CONTEXTS ---
+    // --- CONTEXTS & HOOKS ---
     const { user, loading: authLoading, loginWithGoogle, logout, updateUsername } = useAuthContext();
     const { currentProject, setCurrentProjectById } = useProjectContext();
-    
-    // For sidebar, creation, deletion (REST-based)
     const { chats, isCreatingChat, createChat, deleteChat, loadChats: loadChatsForSidebar, setActiveChatId: setActiveChatId_classic } = useChatContext();
-    
-    // For messaging (WebSocket-based)
     const { messages, isStreaming, isLoading: isWsLoading, connectionStatus, error: wsError, connect, disconnect, sendMessage: sendWsMessage } = useChatWSContext();
-
-    // --- PARAMS & NAVIGATION ---
     const { projectId, chatId } = useParams<{ projectId?: string; chatId?: string; }>();
     const navigate = useNavigate();
     
+    // --- MEMOIZATION (Must be before any conditional returns) ---
+    const conversationsWithOwners = useMemo(() => {
+        return chats.map(chat => ({
+            id: chat.short_id,
+            name: chat.title,
+            owner: currentProject?.members.find(member => member.uid === chat.user_id)?.username || 'Unknown'
+        }));
+    }, [chats, currentProject]);
+
     // --- LOCAL STATE ---
     const [input, setInput] = useState('');
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -133,14 +136,6 @@ const ChatPageWS: React.FC = () => {
         return <div className="flex h-screen w-full items-center justify-center"><p>Loading...</p></div>;
     }
     
-    const conversationsWithOwners = useMemo(() => {
-        return chats.map(chat => ({
-            id: chat.short_id,
-            name: chat.title,
-            owner: currentProject?.members.find(member => member.uid === chat.user_id)?.username || 'Unknown'
-        }));
-    }, [chats, currentProject]);
-
     const loadingComponent = <div className="loading-overlay">Loading...</div>;
 
     return (
