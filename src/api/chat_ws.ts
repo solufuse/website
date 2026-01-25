@@ -10,7 +10,7 @@ export type WebSocketEvent =
   | { type: 'warning'; data: string }
   | { type: 'error'; data: string }
   | { type: 'event'; data: 'end_of_stream' }
-  | { type: 'full_history'; data: any[] }; // Added this line
+  | { type: 'full_history'; data: any[] };
 
 export type WebSocketConnectionOptions = {
     project_id: string;
@@ -44,7 +44,6 @@ export class WebSocketConnection {
 
             this.ws.onopen = () => {
                 console.log("WebSocket connection established.");
-                // Send authentication payload
                 this.ws?.send(JSON.stringify({ 
                     token: token,
                     model: this.options.model 
@@ -96,5 +95,10 @@ export class WebSocketConnection {
 
     public isConnected = (): boolean => {
         return this.ws?.readyState === WebSocket.OPEN;
+    }
+    
+    // Added this method to get the current chat ID
+    public getChatId = (): string => {
+        return this.options.chat_id;
     }
 }

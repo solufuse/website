@@ -33,22 +33,23 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         console.log('WebSocket Event:', event);
         switch (event.type) {
             case 'status':
-                setConnectionStatus(event.data);
-                if (event.data === 'connected' || event.data.startsWith('User')) {
+                const statusMessage = event.data;
+                // Interpret the backend status message to set a machine-readable state.
+                if (statusMessage.includes('Agent initialized')) {
+                    setConnectionStatus('Connected');
                     setIsLoading(false);
+                } else if (statusMessage.includes('authenticated')) {
+                    // Still connecting, but making progress. No state change needed yet.
                 }
                 break;
             
-            // MODIFIED: Handle the specific event for receiving the full chat history
             case 'full_history': 
                 setMessages(event.data);
                 setIsLoading(false);
                 break;
 
             case 'message':
-                // A single new message from another user or the AI's final response
                 setMessages(prev => {
-                    // Avoid duplicates if a streaming message is being replaced
                     const filteredPrev = prev.filter(m => m.id !== 'assistant-streaming' && m.id !== event.data.id);
                     return [...filteredPrev, event.data];
                 });
@@ -57,14 +58,12 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             case 'chunk':
                 if (!isStreaming) {
                     setIsStreaming(true);
-                    // Add a placeholder for the streaming response if it doesn't exist
                     setMessages(prev => 
                         prev.some(m => m.id === 'assistant-streaming') 
                         ? prev 
                         : [...prev, { id: 'assistant-streaming', role: 'assistant', content: '', timestamp: new Date().toISOString() }]
                     );
                 }
-                // Append chunk to the streaming message
                 setMessages(prev => prev.map(m => 
                     m.id === 'assistant-streaming' 
                         ? { ...m, content: m.content + event.data }
@@ -80,6 +79,7 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
             case 'error':
                 setError(event.data);
+                setConnectionStatus('Error');
                 setIsLoading(false);
                 setIsStreaming(false);
                 break;
@@ -94,22 +94,27 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     };
 
     const connect = useCallback((projectId: string, chatId: string) => {
-        if (!user || wsConnection.current?.isConnected()) {
-            return;
+        if (!user) return;
+        if (wsConnection.current?.isConnected()) {
+             // If we're already connected to the same chat, do nothing.
+            if (wsConnection.current.getChatId() === chatId) return;
         }
+        
         console.log(`Connecting to WebSocket for chat ${chatId}`);
         
+        wsConnection.current?.closeConnection(); // Close any existing connection
+
         // Reset state for the new connection
         setIsLoading(true);
         setError(null);
         setMessages([]);
-        wsConnection.current?.closeConnection(); // Close any existing connection
+        setConnectionStatus('Disconnected');
 
         const newConnection = new WebSocketConnection({
             project_id: projectId,
             chat_id: chatId,
             onEvent: handleWsEvent,
-            onOpen: () => setConnectionStatus('Connecting'), // The backend sends a 'connected' status event later
+            onOpen: () => setConnectionStatus('Connecting'),
             onClose: (_code, reason) => {
                 console.log('WebSocket closed:', reason);
                 setConnectionStatus('Disconnected');
@@ -135,7 +140,6 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     const sendMessage = useCallback((messageContent: string) => {
         if (wsConnection.current?.isConnected() && user) {
-            // Optimistically add user message
             const optimisticMessage: Message = {
                 id: `user-${Date.now()}`,
                 content: messageContent,
