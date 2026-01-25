@@ -4,9 +4,10 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 
 // Eagerly load core components for a better user experience
 import ChatPage from "@/pages/ChatPage";
-import ChatPageOld from "@/pages/ChatPageOld";
+
 
 // Lazy load secondary pages
+const ChatPageOld = lazy(() => import('@/pages/ChatPageOld'));
 // const HomePage = lazy(() => import('@/pages/HomePage'));
 // const AdminPage = lazy(() => import('@/pages/AdminPage'));
 // const DocsPage = lazy(() => import('@/pages/DocsPage'));
