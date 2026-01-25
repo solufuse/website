@@ -1,13 +1,13 @@
 
-import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     createChat as apiCreateChat,
     getChats as apiGetChats,
     deleteChat as apiDeleteChat,
+    postMessage as apiPostMessage, // Using REST API post
     cancelGeneration as apiCancelGeneration
 } from '@/api/chat';
-import { WebSocketConnection, WebSocketEvent } from '@/api/chat_ws';
 import { useAuthContext } from './authcontext';
 import { useProjectContext } from './ProjectContext';
 import type { Chat, Message } from '@/types/types_chat';
@@ -19,8 +19,6 @@ interface ChatContextType {
     activeChatId: string | null;
     isLoading: boolean;
     isCreatingChat: boolean;
-    isStreaming: boolean;
-    connectionStatus: string;
     error: string | null;
     
     setActiveChatId: (chatId: string | null) => void;
@@ -38,100 +36,29 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const { user } = useAuthContext();
     const { currentProject } = useProjectContext();
     const navigate = useNavigate();
-    const wsConnection = useRef<WebSocketConnection | null>(null);
 
     const [chats, setChats] = useState<Chat[]>([]);
     const [activeChatId, _setActiveChatId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isCreatingChat, setIsCreatingChat] = useState(false);
-    const [isStreaming, setIsStreaming] = useState(false);
-    const [connectionStatus, setConnectionStatus] = useState('Disconnected');
     const [error, setError] = useState<string | null>(null);
 
     const activeChat = useMemo(() => chats.find(c => c.short_id === activeChatId) || null, [chats, activeChatId]);
 
     const setActiveChatId = useCallback((id: string | null) => {
-        if (wsConnection.current) {
-            wsConnection.current.closeConnection();
-            wsConnection.current = null;
-        }
         _setActiveChatId(id);
     }, []);
 
-    useEffect(() => {
-        if (activeChatId && currentProject) {
-            connectToWebSocket(currentProject.id, activeChatId);
-        }
-        return () => {
-            if (wsConnection.current) {
-                wsConnection.current.closeConnection();
-                wsConnection.current = null;
-            }
-        };
-    }, [activeChatId, currentProject, user]);
-
-    const connectToWebSocket = (projectId: string, chatId: string) => {
-        const options = {
-            project_id: projectId,
-            chat_id: chatId,
-            model: user?.preferred_model,
-            onOpen: () => setConnectionStatus('Connected'),
-            onClose: (_code: number, reason: string) => setConnectionStatus(`Disconnected: ${reason}`),
-            onEvent: handleWebSocketEvent,
-            onError: (err: any) => setError(`WebSocket Error: ${err.message}`),
-        };
-        wsConnection.current = new WebSocketConnection(options);
-        wsConnection.current.connect();
-    };
-
-    const handleWebSocketEvent = (event: WebSocketEvent) => {
-        switch (event.type) {
-            case 'status':
-                if (event.data === "Agent initialized. Ready for messages.") {
-                    setIsLoading(false);
-                }
-                setConnectionStatus(event.data);
-                break;
-            case 'message':
-                setChats(prev => prev.map(chat => 
-                    chat.short_id === activeChatId ? { ...chat, messages: [...chat.messages, event.data] } : chat
-                ));
-                break;
-            case 'chunk':
-                setIsStreaming(true);
-                setChats(prev => prev.map(chat => {
-                    if (chat.short_id !== activeChatId) return chat;
-                    const lastMsgIndex = chat.messages.length - 1;
-                    if (lastMsgIndex >= 0 && chat.messages[lastMsgIndex].role === 'assistant') {
-                        let newMessages = [...chat.messages];
-                        newMessages[lastMsgIndex].content += event.data;
-                        return { ...chat, messages: newMessages };
-                    } else {
-                        const newAssistantMessage: Message = { id: `ai-${Date.now()}`, content: event.data, role: 'assistant', timestamp: new Date().toISOString() };
-                        return { ...chat, messages: [...chat.messages, newAssistantMessage] };
-                    }
-                }));
-                break;
-            case 'event':
-                if (event.data === 'end_of_stream') {
-                    setIsStreaming(false);
-                }
-                break;
-            case 'error':
-                setError(event.data);
-                setIsLoading(false);
-                setIsStreaming(false);
-                break;
-        }
-    };
-
     const loadChats = useCallback(async (projectId: string) => {
+        setIsLoading(true);
         try {
             const loadedChats = await apiGetChats(projectId);
             const sortedChats = loadedChats.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
             setChats(sortedChats);
         } catch (err: any) {
             setError('Failed to load chats.');
+        } finally {
+            setIsLoading(false);
         }
     }, []);
 
@@ -148,10 +75,10 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setIsCreatingChat(true);
         setError(null);
         try {
+            // The api_key is required by the type, but might not be used if auth is token-based
             const newChat = await apiCreateChat(currentProject.id, { title, api_key: '' });
             setChats(prev => [newChat, ...prev]);
             navigate(`/chats/${currentProject.id}/${newChat.short_id}`);
-            // setActiveChatId will trigger the useEffect to connect the websocket
             setActiveChatId(newChat.short_id);
             return newChat;
         } catch (err: any) {
@@ -174,15 +101,32 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     const sendMessage = async (messageContent: string) => {
-        if (!messageContent.trim()) return;
-        if (!wsConnection.current || !wsConnection.current.isConnected()) {
-            setError("WebSocket is not connected.");
-            return;
-        }
+        if (!messageContent.trim() || !activeChatId || !currentProject) return;
 
-        // The user message is now sent via WebSocket and will be echoed back
-        // by the server, so we don't add it to the state directly.
-        wsConnection.current.sendMessage(messageContent);
+        setIsLoading(true);
+        setError(null);
+
+        // Optimistically add user message
+        const userMessage: Message = {
+            id: `user-${Date.now()}`,
+            content: messageContent,
+            role: 'user',
+            timestamp: new Date().toISOString(),
+            user_id: user?.uid,
+        };
+        setChats(prev => prev.map(c => c.short_id === activeChatId ? { ...c, messages: [...c.messages, userMessage] } : c));
+
+        try {
+            await apiPostMessage(activeChatId, { content: messageContent, api_key: '' });
+            // Reload the whole chat to get the assistant's response
+            await loadChats(currentProject.id);
+        } catch (err: any) {
+            setError(`Failed to send message: ${err.message}`);
+            // Optional: remove optimistic message on failure
+            setChats(prev => prev.map(c => c.short_id === activeChatId ? { ...c, messages: c.messages.filter(m => m.id !== userMessage.id) } : c));
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const cancelGeneration = async () => {
@@ -200,8 +144,6 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         activeChatId,
         isLoading,
         isCreatingChat,
-        isStreaming,
-        connectionStatus,
         error,
         setActiveChatId,
         loadChats,
