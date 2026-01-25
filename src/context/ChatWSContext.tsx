@@ -11,10 +11,9 @@ interface ChatWSContextType {
     isLoading: boolean;
     connectionStatus: string;
     error: string | null;
-    
     connect: (projectId: string, chatId: string) => void;
     disconnect: () => void;
-    sendMessage: (message: string) => Promise<void>;
+    sendMessage: (message: string) => void;
 }
 
 const ChatWSContext = createContext<ChatWSContextType | undefined>(undefined);
@@ -25,100 +24,125 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const wsConnection = useRef<WebSocketConnection | null>(null);
 
     const [messages, setMessages] = useState<Message[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
     const [isStreaming, setIsStreaming] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
     const [connectionStatus, setConnectionStatus] = useState('Disconnected');
     const [error, setError] = useState<string | null>(null);
 
-    const handleWebSocketEvent = useCallback((event: WebSocketEvent) => {
+    const handleWsEvent = (event: WebSocketEvent) => {
+        console.log('WebSocket Event:', event);
         switch (event.type) {
             case 'status':
-                if (event.data === "Agent initialized. Ready for messages.") {
+                setConnectionStatus(event.data);
+                if (event.data === 'connected') {
                     setIsLoading(false);
                 }
-                setConnectionStatus(event.data);
                 break;
-            case 'message': // Handles full messages, e.g., history
-                // Assuming history comes as a batch
+
+            case 'message':
+                // If data is an array, it's the chat history
                 if (Array.isArray(event.data)) {
-                    setMessages(prev => [...prev, ...event.data]);
+                    setMessages(event.data);
                 } else {
-                    setMessages(prev => [...prev, event.data]);
+                    // Otherwise, it's a single new message.
+                    // Replace the streaming message with the final one.
+                    setMessages(prev => [...prev.filter(m => m.id !== 'assistant-streaming'), event.data]);
                 }
+                setIsLoading(false);
                 break;
+
             case 'chunk':
-                setIsStreaming(true);
-                setMessages(prev => {
-                    const lastMsgIndex = prev.length - 1;
-                    if (lastMsgIndex >= 0 && prev[lastMsgIndex].role === 'assistant') {
-                        // Append to the last assistant message
-                        let newMessages = [...prev];
-                        newMessages[lastMsgIndex].content += event.data;
-                        return newMessages;
-                    } else {
-                        // Start a new assistant message
-                        const newAssistantMessage: Message = { id: `ai-${Date.now()}`, content: event.data, role: 'assistant', timestamp: new Date().toISOString() };
-                        return [...prev, newAssistantMessage];
-                    }
-                });
+                if (!isStreaming) {
+                    setIsStreaming(true);
+                    // Add a placeholder for the streaming response
+                    setMessages(prev => [...prev, { id: 'assistant-streaming', role: 'assistant', content: '', timestamp: new Date().toISOString() }]);
+                }
+                // Append chunk to the streaming message
+                setMessages(prev => prev.map(m => 
+                    m.id === 'assistant-streaming' 
+                        ? { ...m, content: m.content + event.data }
+                        : m
+                ));
                 break;
+
             case 'event':
                 if (event.data === 'end_of_stream') {
                     setIsStreaming(false);
+                    // The final message is expected to arrive via a 'message' event
                 }
                 break;
+
             case 'error':
                 setError(event.data);
                 setIsLoading(false);
                 setIsStreaming(false);
                 break;
+
+            case 'warning':
+                console.warn('WebSocket Warning:', event.data);
+                break;
+
+            default:
+                console.warn('Unhandled WebSocket event:', event);
         }
-    }, []);
+    };
 
     const connect = useCallback((projectId: string, chatId: string) => {
-        if (wsConnection.current) {
-            wsConnection.current.closeConnection();
+        if (!user || wsConnection.current?.isConnected()) {
+            return;
         }
+        console.log(`Connecting to WebSocket for chat ${chatId}`);
         
-        setMessages([]); // Clear previous messages
+        // Reset state for the new connection
         setIsLoading(true);
         setError(null);
-        
-        const options = {
+        setMessages([]);
+        wsConnection.current?.closeConnection(); // Close any existing connection
+
+        const newConnection = new WebSocketConnection({
             project_id: projectId,
             chat_id: chatId,
-            model: user?.preferred_model,
-            onOpen: () => setConnectionStatus('Connected'),
-            onClose: (_code: number, reason: string) => setConnectionStatus(`Disconnected: ${reason}`),
-            onEvent: handleWebSocketEvent,
-            onError: (err: any) => {
-                setError(`WebSocket Error: ${err.message}`);
-                setIsLoading(false);
+            onEvent: handleWsEvent,
+            onOpen: () => setConnectionStatus('Connecting'), // The backend sends a 'connected' status event later
+            onClose: (_code, reason) => {
+                console.log('WebSocket closed:', reason);
+                setConnectionStatus('Disconnected');
             },
-        };
-        wsConnection.current = new WebSocketConnection(options);
-        wsConnection.current.connect();
-    }, [user, handleWebSocketEvent]);
+            onError: (err) => {
+                console.error('WebSocket error:', err);
+                setError('An error occurred with the connection.');
+            },
+        });
+
+        wsConnection.current = newConnection;
+        newConnection.connect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user]);
 
     const disconnect = useCallback(() => {
         if (wsConnection.current) {
+            console.log('Disconnecting WebSocket.');
             wsConnection.current.closeConnection();
             wsConnection.current = null;
-            setConnectionStatus('Disconnected');
         }
     }, []);
 
-    const sendMessage = async (messageContent: string) => {
-        if (!messageContent.trim()) return;
-        if (!wsConnection.current || !wsConnection.current.isConnected()) {
-            setError("WebSocket is not connected.");
-            return;
+    const sendMessage = useCallback((messageContent: string) => {
+        if (wsConnection.current?.isConnected() && user) {
+            // Optimistically add user message
+            const optimisticMessage: Message = {
+                id: `user-${Date.now()}`,
+                content: messageContent,
+                role: 'user',
+                timestamp: new Date().toISOString(),
+                user_id: user.uid,
+            };
+            setMessages(prev => [...prev, optimisticMessage]);
+            wsConnection.current.sendMessage(messageContent);
+        } else {
+            setError('Cannot send message. WebSocket is not connected.');
         }
-
-        // The user message is sent to the server, which will echo it back.
-        // We can add it optimistically if the server doesn't echo user messages.
-        wsConnection.current.sendMessage(messageContent);
-    };
+    }, [user]);
 
     const value = {
         messages,
@@ -128,7 +152,7 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         error,
         connect,
         disconnect,
-        sendMessage,
+        sendMessage
     };
 
     return <ChatWSContext.Provider value={value}>{children}</ChatWSContext.Provider>;
