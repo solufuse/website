@@ -10,7 +10,10 @@ export type WebSocketEvent =
   | { type: 'warning'; data: string }
   | { type: 'error'; data: string }
   | { type: 'event'; data: 'end_of_stream' }
-  | { type: 'full_history'; data: any[] };
+  | { type: 'full_history'; data: any[] }
+  // --- ADDED ---
+  | { type: 'tool_code'; data: string }
+  | { type: 'tool_output'; data: string };
 
 export type WebSocketConnectionOptions = {
     project_id: string;
@@ -97,7 +100,6 @@ export class WebSocketConnection {
         return this.ws?.readyState === WebSocket.OPEN;
     }
     
-    // Added this method to get the current chat ID
     public getChatId = (): string => {
         return this.options.chat_id;
     }

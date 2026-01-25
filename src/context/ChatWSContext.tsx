@@ -22,7 +22,8 @@ const ChatWSContext = createContext<ChatWSContextType | undefined>(undefined);
 export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const { user } = useAuthContext();
     const wsConnection = useRef<WebSocketConnection | null>(null);
-    const optimisticMessageIdRef = useRef<string | null>(null); // Ref to hold temp user message ID
+    const optimisticMessageIdRef = useRef<string | null>(null); // For user messages
+    const assistantMessageIdRef = useRef<string | null>(null); // For assistant messages
 
     const [messages, setMessages] = useState<Message[]>([]);
     const [isStreaming, setIsStreaming] = useState(false);
@@ -32,10 +33,23 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     const handleWsEvent = (event: WebSocketEvent) => {
         console.log('WebSocket Event:', event);
+
+        // --- Start a new assistant message if one isn't active ---
+        if (['tool_code', 'chunk', 'tool_output'].includes(event.type) && !assistantMessageIdRef.current) {
+            const newAssistantId = `assistant-streaming-${Date.now()}`;
+            assistantMessageIdRef.current = newAssistantId;
+            setIsStreaming(true);
+            setMessages(prev => [...prev, { 
+                id: newAssistantId, 
+                role: 'assistant', 
+                content: '', 
+                timestamp: new Date().toISOString() 
+            }]);
+        }
+
         switch (event.type) {
             case 'status':
-                const statusMessage = event.data;
-                if (statusMessage.includes('Agent initialized')) {
+                if (event.data.includes('Agent initialized')) {
                     setConnectionStatus('Connected');
                     setIsLoading(false);
                 }
@@ -48,35 +62,39 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
             case 'message':
                 setMessages(prev => {
-                    // --- CORRECTED: Handle optimistic message replacement ---
-                    // If this is a user message and it matches our optimistic one, replace it.
                     if (event.data.role === 'user' && optimisticMessageIdRef.current) {
                         const newMessages = prev.map(m => 
                             m.id === optimisticMessageIdRef.current ? event.data : m
                         );
-                        optimisticMessageIdRef.current = null; // Clear the ref
+                        optimisticMessageIdRef.current = null; 
                         return newMessages;
-                    } 
-                    // For assistant messages or other cases, filter and add.
-                    else {
-                        const filteredPrev = prev.filter(m => m.id !== 'assistant-streaming' && m.id !== event.data.id);
+                    } else {
+                        const filteredPrev = prev.filter(m => m.id !== event.data.id);
                         return [...filteredPrev, event.data];
                     }
-                    // --- END OF FIX ---
                 });
                 break;
 
-            case 'chunk':
-                if (!isStreaming) {
-                    setIsStreaming(true);
-                    setMessages(prev => 
-                        prev.some(m => m.id === 'assistant-streaming') 
-                        ? prev 
-                        : [...prev, { id: 'assistant-streaming', role: 'assistant', content: '', timestamp: new Date().toISOString() }]
-                    );
-                }
+            // --- MODIFIED: Handle new structured events ---
+            case 'tool_code':
                 setMessages(prev => prev.map(m => 
-                    m.id === 'assistant-streaming' 
+                    m.id === assistantMessageIdRef.current 
+                        ? { ...m, tool_code: (m.tool_code || '') + event.data }
+                        : m
+                ));
+                break;
+            
+            case 'tool_output':
+                setMessages(prev => prev.map(m => 
+                    m.id === assistantMessageIdRef.current 
+                        ? { ...m, tool_output: (m.tool_output || '') + event.data }
+                        : m
+                ));
+                break;
+
+            case 'chunk':
+                setMessages(prev => prev.map(m => 
+                    m.id === assistantMessageIdRef.current 
                         ? { ...m, content: m.content + event.data }
                         : m
                 ));
@@ -85,14 +103,17 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             case 'event':
                 if (event.data === 'end_of_stream') {
                     setIsStreaming(false);
+                    assistantMessageIdRef.current = null; // Reset for the next message
                 }
                 break;
+            // --- END OF MODIFICATION ---
 
             case 'error':
                 setError(event.data);
                 setConnectionStatus('Error');
                 setIsLoading(false);
                 setIsStreaming(false);
+                assistantMessageIdRef.current = null;
                 break;
 
             case 'warning':
@@ -106,9 +127,7 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     const connect = useCallback((projectId: string, chatId: string) => {
         if (!user) return;
-        if (wsConnection.current?.isConnected()) {
-            if (wsConnection.current.getChatId() === chatId) return;
-        }
+        if (wsConnection.current?.isConnected() && wsConnection.current.getChatId() === chatId) return;
         
         wsConnection.current?.closeConnection(); 
 
@@ -118,6 +137,8 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         setError(null);
         setMessages([]);
         setConnectionStatus('Disconnected');
+        optimisticMessageIdRef.current = null;
+        assistantMessageIdRef.current = null;
 
         const newConnection = new WebSocketConnection({
             project_id: projectId,
@@ -149,7 +170,6 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     const sendMessage = useCallback((messageContent: string) => {
         if (wsConnection.current?.isConnected() && user) {
-            // --- CORRECTED: Create and track optimistic message ---
             const optimisticMessage: Message = {
                 id: `user-optimistic-${Date.now()}`,
                 content: messageContent,
@@ -157,10 +177,9 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 timestamp: new Date().toISOString(),
                 user_id: user.uid,
             };
-            optimisticMessageIdRef.current = optimisticMessage.id; // Track its ID
+            optimisticMessageIdRef.current = optimisticMessage.id;
             setMessages(prev => [...prev, optimisticMessage]);
             wsConnection.current.sendMessage(messageContent);
-            // --- END OF FIX ---
         } else {
             setError('Cannot send message. WebSocket is not connected.');
         }

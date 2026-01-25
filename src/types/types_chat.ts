@@ -8,6 +8,8 @@ export interface Message {
     timestamp: string; // ISO 8601 datetime string
     commit_hash?: string;
     user_id?: string; // UID of the user who sent the message
+    tool_code?: string; // <<< ADDED: To store the tool code execution string
+    tool_output?: string; // <<< ADDED: To store the raw output from the tool
 }
 
 export interface Chat {
