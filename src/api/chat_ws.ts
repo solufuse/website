@@ -28,6 +28,7 @@ export class WebSocketConnection {
     private ws: WebSocket | null = null;
     private options: WebSocketConnectionOptions;
     private connectionUrl: string;
+    private pingIntervalId: number | null = null;
 
     constructor(options: WebSocketConnectionOptions) {
         this.options = options;
@@ -51,6 +52,14 @@ export class WebSocketConnection {
                     model: this.options.model 
                 }));
                 this.options.onOpen?.();
+
+                // Start sending pings every 20 seconds to keep the connection alive
+                this.pingIntervalId = window.setInterval(() => {
+                    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                        console.log("Sending WebSocket ping");
+                        this.ws.send(JSON.stringify({ type: 'ping' }));
+                    }
+                }, 20000); // 20 seconds
             };
 
             this.ws.onmessage = (event) => {
@@ -70,6 +79,10 @@ export class WebSocketConnection {
 
             this.ws.onclose = (event) => {
                 console.log(`WebSocket connection closed: ${event.reason} (Code: ${event.code})`);
+                if (this.pingIntervalId) {
+                    window.clearInterval(this.pingIntervalId);
+                    this.pingIntervalId = null;
+                }
                 this.options.onClose?.(event.code, event.reason);
                 this.ws = null;
             };
