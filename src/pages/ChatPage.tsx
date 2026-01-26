@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Bot, Terminal, ChevronDown, FolderOpen, Upload, Plus, X } from 'lucide-react';
+import { Send, Bot, Terminal, ChevronDown, FolderOpen, Upload, Plus, X, Clipboard, Link } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
@@ -43,7 +43,7 @@ const ChatPage: React.FC = () => {
     const { currentProject, setCurrentProjectById } = useProjectContext();
     const { chats, isCreatingChat, createChat, deleteChat, loadChats: loadChatsForSidebar, setActiveChatId: setActiveChatId_classic } = useChatContext();
     const { messages, isStreaming, isLoading: isWsLoading, connectionStatus, error: wsError, connect, disconnect, sendMessage: sendWsMessage } = useChatWSContext();
-    const { projectId, chatId } = useParams<{ projectId?: string; chatId?: string; }>();
+    const { projectId, chatId, messageId } = useParams<{ projectId?: string; chatId?: string; messageId?: string; }>();
     const navigate = useNavigate();
     
     const [input, setInput] = useState('');
@@ -59,6 +59,7 @@ const ChatPage: React.FC = () => {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const scrollAreaRef = useRef<null | HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
     
     const conversationsWithOwners = useMemo(() => {
         return chats.map(chat => ({
@@ -70,6 +71,17 @@ const ChatPage: React.FC = () => {
 
     const scrollToBottom = (behavior: 'smooth' | 'auto' = 'smooth') => {
         messagesEndRef.current?.scrollIntoView({ behavior });
+    };
+
+    const handleScrollToMessage = (messageId: string) => {
+        const messageElement = messageRefs.current.get(messageId);
+        if (messageElement) {
+            messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            messageElement.classList.add('highlight');
+            setTimeout(() => {
+                messageElement.classList.remove('highlight');
+            }, 2000);
+        }
     };
 
     useEffect(() => {
@@ -116,6 +128,15 @@ const ChatPage: React.FC = () => {
             textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
         }
     }, [input]);
+
+    useEffect(() => {
+        // Use a timeout to ensure messages are rendered before scrolling
+        setTimeout(() => {
+            if (messageId && messages.length > 0) {
+                handleScrollToMessage(messageId);
+            }
+        }, 100);
+    }, [messageId, messages]);
     
     const handleSend = async () => {
         if (!input.trim()) return;
@@ -133,6 +154,22 @@ const ChatPage: React.FC = () => {
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } };
     const getMessageAuthor = (message: Message): ProjectMember | null => currentProject?.members.find(m => m.uid === message.user_id) || null;
 
+    const handleCopy = (content: string) => {
+        navigator.clipboard.writeText(content);
+        alert('Message copied to clipboard!');
+    };
+
+    const handleShare = (messageId?: string) => {
+        if (currentProject && chatId) {
+            let link = `${window.location.origin}/chats/${currentProject.id}/${chatId}`;
+            if (messageId) {
+                link += `/${messageId}`;
+            }
+            navigator.clipboard.writeText(link);
+            alert('Link copied to clipboard!');
+        }
+    };
+
     if (authLoading) return <div className="flex h-screen w-full items-center justify-center"><p>Loading...</p></div>;
     
     const loadingComponent = <div className="loading-overlay">Loading...</div>;
@@ -147,61 +184,81 @@ const ChatPage: React.FC = () => {
                     <div className="flex flex-1 flex-col min-w-0 relative">
                         <ScrollArea className="flex-1" ref={scrollAreaRef}>
                             <main className="p-4">
-                                <div className="max-w-4xl mx-auto">
-                                    {!currentProject || !chatId ? (
-                                        <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)]"><Bot size={72} /><p className="text-2xl mt-4">How can I help you today?</p><p className='mt-2'>Select a chat or start a new one.</p></div>
-                                    ) : (
-                                        <div className="space-y-6">
-                                            {messages.map((message) => {
-                                                const isOwnMessage = message.role === 'user' && user?.uid === message.user_id;
-                                                if (message.role === 'assistant') {
-                                                    const hasToolInfo = message.tool_code || message.tool_output;
-                                                    const showThinking = message.id.startsWith('assistant-streaming') && !message.content && !hasToolInfo;
+                                <TooltipProvider>
+                                    <div className="max-w-4xl mx-auto">
+                                        {!currentProject || !chatId ? (
+                                            <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)]"><Bot size={72} /><p className="text-2xl mt-4">How can I help you today?</p><p className='mt-2'>Select a chat or start a new one.</p></div>
+                                        ) : (
+                                            <div className="space-y-6">
+                                                {messages.map((message) => {
+                                                    const isOwnMessage = message.role === 'user' && user?.uid === message.user_id;
+                                                    const shareId = message.commit_hash || message.id;
+
                                                     return (
-                                                        <div key={message.id} className="flex items-start gap-3">
-                                                            <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>AI</AvatarFallback></Avatar>
-                                                            <div className="max-w-[85%] p-4 rounded-md bg-muted/50 dark:bg-slate-900/50 border border-border/70 flex-1">
-                                                                <p className="font-bold mb-2">Solufuse</p>
-                                                                {showThinking ? (
-                                                                    <div className="bouncing-dots"><span></span><span></span><span></span></div>
-                                                                ) : (
-                                                                    <Suspense fallback={loadingComponent}>
-                                                                        <MarkdownRenderer content={message.content || ''} />
-                                                                    </Suspense>
-                                                                )}
-                                                                {hasToolInfo && (
-                                                                    <Accordion type="single" collapsible className="w-full mt-2">
-                                                                        <AccordionItem value="item-1">
-                                                                            <AccordionTrigger className="text-xs py-2"><div className="flex items-center gap-2"><Terminal className="h-4 w-4" /><span>Execution Details</span></div></AccordionTrigger>
-                                                                            <AccordionContent className="text-xs bg-black p-2 rounded-md font-mono mt-2">
-                                                                                {message.tool_code && <pre className="whitespace-pre-wrap"><code>{message.tool_code}</code></pre>}
-                                                                                {message.tool_output && <pre className="mt-2 whitespace-pre-wrap text-gray-400"><code>{message.tool_output}</code></pre>}
-                                                                            </AccordionContent>
-                                                                        </AccordionItem>
-                                                                    </Accordion>
-                                                                )}
+                                                        <div key={message.id} ref={el => { if (el) messageRefs.current.set(shareId, el); else messageRefs.current.delete(shareId); }}>
+                                                            {message.role === 'assistant' ? (
+                                                                <div className="flex items-start gap-3">
+                                                                    <Avatar><AvatarImage src="/logo.svg" alt="Solufuse" /><AvatarFallback>AI</AvatarFallback></Avatar>
+                                                                    <div className="max-w-[85%] p-4 rounded-md bg-muted/50 dark:bg-slate-900/50 border border-border/70 flex-1">
+                                                                        <p className="font-bold mb-2">Solufuse</p>
+                                                                        {(message.id.startsWith('assistant-streaming') && !message.content && !message.tool_code && !message.tool_output) ? (
+                                                                            <div className="bouncing-dots"><span></span><span></span><span></span></div>
+                                                                        ) : (
+                                                                            <Suspense fallback={loadingComponent}>
+                                                                                <MarkdownRenderer content={message.content || ''} />
+                                                                            </Suspense>
+                                                                        )}
+                                                                        {(message.tool_code || message.tool_output) && (
+                                                                            <Accordion type="single" collapsible className="w-full mt-2">
+                                                                                <AccordionItem value="item-1">
+                                                                                    <AccordionTrigger className="text-xs py-2"><div className="flex items-center gap-2"><Terminal className="h-4 w-4" /><span>Execution Details</span></div></AccordionTrigger>
+                                                                                    <AccordionContent className="text-xs bg-black p-2 rounded-md font-mono mt-2">
+                                                                                        {message.tool_code && <pre className="whitespace-pre-wrap"><code>{message.tool_code}</code></pre>}
+                                                                                        {message.tool_output && <pre className="mt-2 whitespace-pre-wrap text-gray-400"><code>{message.tool_output}</code></pre>}
+                                                                                    </AccordionContent>
+                                                                                </AccordionItem>
+                                                                            </Accordion>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex items-start gap-3 justify-end">
+                                                                    <div className={'max-w-[85%] p-3 rounded-lg bg-primary text-primary-foreground dark:bg-slate-700 dark:text-slate-50'}>
+                                                                        <p className="font-bold mb-2">{isOwnMessage ? (user?.username || 'You') : (getMessageAuthor(message)?.username || getMessageAuthor(message)?.email || 'Unknown User')}</p>
+                                                                        <Suspense fallback={loadingComponent}><MarkdownRenderer content={message.content} /></Suspense>
+                                                                    </div>
+                                                                    <Avatar>
+                                                                        <AvatarImage src={isOwnMessage ? user?.photoURL ?? undefined : getMessageAuthor(message)?.avatar_url} alt={isOwnMessage ? user?.username ?? undefined : getMessageAuthor(message)?.username ?? undefined} />
+                                                                        <AvatarFallback>{(isOwnMessage ? (user?.username?.charAt(0) || user?.displayName?.charAt(0)) : (getMessageAuthor(message)?.username?.charAt(0) || getMessageAuthor(message)?.email?.charAt(0))) || 'U'}</AvatarFallback>
+                                                                    </Avatar>
+                                                                </div>
+                                                            )}
+                                                            <div className={`flex items-center gap-1 mt-2 ${message.role === 'user' ? 'justify-end mr-12' : 'justify-start ml-12'}`}>
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleCopy(message.content)}>
+                                                                            <Clipboard className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent><p>Copy message</p></TooltipContent>
+                                                                </Tooltip>
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleShare(shareId)}>
+                                                                            <Link className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent><p>Copy message link</p></TooltipContent>
+                                                                </Tooltip>
                                                             </div>
                                                         </div>
                                                     );
-                                                }
-                                                const author = getMessageAuthor(message);
-                                                const displayName = isOwnMessage ? (user?.username || 'You') : (author?.username || author?.email || 'Unknown User');
-                                                const avatarUrl = isOwnMessage ? user?.photoURL ?? undefined : author?.avatar_url;
-                                                const avatarFallback = (isOwnMessage ? (user?.username?.charAt(0) || user?.displayName?.charAt(0)) : (author?.username?.charAt(0) || author?.email?.charAt(0))) || 'U';
-                                                return (
-                                                    <div key={message.id} className="flex items-start gap-3 justify-end">
-                                                        <div className={`max-w-[85%] p-3 rounded-lg bg-primary text-primary-foreground dark:bg-slate-700 dark:text-slate-50'}`}>
-                                                            <p className="font-bold mb-2">{displayName}</p>
-                                                            <Suspense fallback={loadingComponent}><MarkdownRenderer content={message.content} /></Suspense>
-                                                        </div>
-                                                        <Avatar><AvatarImage src={avatarUrl ?? undefined} alt={displayName ?? undefined} /><AvatarFallback>{avatarFallback}</AvatarFallback></Avatar>
-                                                    </div>
-                                                );
-                                            })}
-                                            <div ref={messagesEndRef} />
-                                        </div>
-                                    )}
-                                </div>
+                                                })}
+                                                <div ref={messagesEndRef} />
+                                            </div>
+                                        )}
+                                    </div>
+                                </TooltipProvider>
                             </main>
                         </ScrollArea>
                         {userScrolledUp && (

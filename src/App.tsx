@@ -30,7 +30,7 @@ const App = () => {
           <Route path="/chats/:projectId?/:chatId?/:messageId?" element={<ChatPage />} />
 
           {/* Legacy REST-based Chat Route */}
-          <Route path="/chat-old/:projectId?/:chatId?/:messageId?" element={<ChatPageOld />} />
+          <Route path="/chats-old/:projectId?/:chatId?/:messageId?" element={<ChatPageOld />} />
 
           {/* Other application routes */}
           <Route path="/ws-test" element={<WebSocketTestPage />} />
