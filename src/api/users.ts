@@ -1,7 +1,6 @@
 import { getAuthToken } from './getAuthToken';
+import { API_BASE_URL } from '@/config/apiConfig';
 import type { UserProfile, UserUpdatePayload, PaginatedUsersResponse } from '@/types/types_users';
-
-const API_BASE_URL = 'https://api.solufuse.com';
 
 // This interface is specific to the API key update operation.
 interface ApiKeyUpdateResponse {

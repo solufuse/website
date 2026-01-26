@@ -1,5 +1,6 @@
 
 import { getAuthToken } from '@/api/getAuthToken';
+import { API_BASE_URL } from '@/config/apiConfig';
 import type {
     Chat,
     Message,
@@ -8,8 +9,6 @@ import type {
     DeleteMessageRequest,
 } from '@/types/types_chat';
 import { handleResponse } from '@/utils/handleResponse';
-
-const API_BASE_URL = 'https://api.solufuse.com';
 
 // --- CHAT API FUNCTIONS ---
 

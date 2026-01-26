@@ -1,7 +1,6 @@
 
 import { getAuthToken } from './getAuthToken';
-
-const API_URL = 'https://api.solufuse.com';
+import { API_BASE_URL } from '@/config/apiConfig';
 
 // --- Common Types ---
 
@@ -45,7 +44,7 @@ const fetchAPI = async (endpoint: string, options: RequestInit = {}) => {
     ...options.headers,
   };
 
-  const response = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
 
   if (!response.ok) {
     let errorData;

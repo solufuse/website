@@ -1,8 +1,7 @@
 
 import { FileInfo } from '../types';
 import { getAuthToken } from './getAuthToken';
-
-const API_URL = 'https://api.solufuse.com'; // Base URL for the API
+import { API_BASE_URL } from '@/config/apiConfig';
 
 interface ApiParams {
     projectId?: string | null;
@@ -17,7 +16,7 @@ interface ApiParams {
  * @returns {URL} A URL object with appended query parameters.
  */
 const buildUrl = (endpoint: string, { projectId, sessionUid }: ApiParams): URL => {
-    const url = new URL(`${API_URL}${endpoint}`);
+    const url = new URL(`${API_BASE_URL}${endpoint}`);
     if (projectId) {
         url.searchParams.append('project_id', projectId);
     }

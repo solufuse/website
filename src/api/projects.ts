@@ -1,5 +1,6 @@
 
 import { getAuthToken } from '@/api/getAuthToken';
+import { API_BASE_URL } from '@/config/apiConfig';
 import type {
     PaginatedProjectListResponse,
     ProjectCreatePayload,
@@ -8,8 +9,6 @@ import type {
     ProjectListDetail
 } from '@/types/types_projects';
 import { handleResponse } from '@/utils/handleResponse';
-
-const API_BASE_URL = 'https://api.solufuse.com';
 
 // --- API FUNCTIONS ---
 

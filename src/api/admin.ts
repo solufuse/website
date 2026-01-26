@@ -8,8 +8,7 @@ import {
     AuditItem
 } from '../types';
 import { getAuthToken } from './getAuthToken';
-
-const API_URL = 'https://api.solufuse.com';
+import { API_BASE_URL } from '@/config/apiConfig';
 
 const handleResponse = async (response: Response) => {
     if (!response.ok) {
@@ -39,7 +38,7 @@ export const listAdminUsers = async (params: {
 }): Promise<UserAdminView[]> => {
     const token = await getAuthToken();
     const query = new URLSearchParams(params as any).toString();
-    const response = await fetch(`${API_URL}/admin/users?${query}`, {
+    const response = await fetch(`${API_BASE_URL}/admin/users?${query}`, {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${token}` },
     });
@@ -48,7 +47,7 @@ export const listAdminUsers = async (params: {
 
 export const listAllUsers = async (): Promise<UserAdminView[]> => {
     const token = await getAuthToken();
-    const response = await fetch(`${API_URL}/admin/users/all`, {
+    const response = await fetch(`${API_BASE_URL}/admin/users/all`, {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${token}` },
     });
@@ -57,7 +56,7 @@ export const listAllUsers = async (): Promise<UserAdminView[]> => {
 
 export const updateUserRole = async (data: RoleUpdatePayload): Promise<any> => {
     const token = await getAuthToken();
-    const response = await fetch(`${API_URL}/admin/users/role`, {
+    const response = await fetch(`${API_BASE_URL}/admin/users/role`, {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json',
@@ -70,7 +69,7 @@ export const updateUserRole = async (data: RoleUpdatePayload): Promise<any> => {
 
 export const banUser = async (data: BanRequestPayload): Promise<any> => {
     const token = await getAuthToken();
-    const response = await fetch(`${API_URL}/admin/users/ban`, {
+    const response = await fetch(`${API_BASE_URL}/admin/users/ban`, {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json',
@@ -83,7 +82,7 @@ export const banUser = async (data: BanRequestPayload): Promise<any> => {
 
 export const cleanupGuests = async (hours_old: number = 24): Promise<any> => {
     const token = await getAuthToken();
-    const response = await fetch(`${API_URL}/admin/guests/cleanup?hours_old=${hours_old}`, {
+    const response = await fetch(`${API_BASE_URL}/admin/guests/cleanup?hours_old=${hours_old}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` },
     });
@@ -92,7 +91,7 @@ export const cleanupGuests = async (hours_old: number = 24): Promise<any> => {
 
 export const deepCleanFirebase = async (confirm: boolean): Promise<any> => {
     const token = await getAuthToken();
-    const response = await fetch(`${API_URL}/admin/firebase/cleanup?confirm=${confirm}`, {
+    const response = await fetch(`${API_BASE_URL}/admin/firebase/cleanup?confirm=${confirm}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` },
     });
@@ -104,7 +103,7 @@ export const deepCleanFirebase = async (confirm: boolean): Promise<any> => {
 
 export const getStorageStats = async (): Promise<StorageStats> => {
     const token = await getAuthToken();
-    const response = await fetch(`${API_URL}/storage/stats`, {
+    const response = await fetch(`${API_BASE_URL}/storage/stats`, {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${token}` },
     });
@@ -113,7 +112,7 @@ export const getStorageStats = async (): Promise<StorageStats> => {
 
 export const getStorageAudit = async (): Promise<AuditItem[]> => {
     const token = await getAuthToken();
-    const response = await fetch(`${API_URL}/storage/audit`, {
+    const response = await fetch(`${API_BASE_URL}/storage/audit`, {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${token}` },
     });
@@ -122,7 +121,7 @@ export const getStorageAudit = async (): Promise<AuditItem[]> => {
 
 export const cleanupOrphans = async (confirm: boolean = true): Promise<any> => {
     const token = await getAuthToken();
-    const response = await fetch(`${API_URL}/storage/orphans?confirm=${confirm}`, {
+    const response = await fetch(`${API_BASE_URL}/storage/orphans?confirm=${confirm}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` },
     });
@@ -131,7 +130,7 @@ export const cleanupOrphans = async (confirm: boolean = true): Promise<any> => {
 
 export const forceDeleteFolder = async (folderId: string): Promise<any> => {
     const token = await getAuthToken();
-    const response = await fetch(`${API_URL}/storage/${folderId}`, {
+    const response = await fetch(`${API_BASE_URL}/storage/${folderId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` },
     });
@@ -143,7 +142,7 @@ export const forceDeleteFolder = async (folderId: string): Promise<any> => {
 
 export const getMyProfile = async (): Promise<UserProfile> => {
     const token = await getAuthToken();
-    const response = await fetch(`${API_URL}/users/me`, {
+    const response = await fetch(`${API_BASE_URL}/users/me`, {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${token}` },
     });
@@ -152,7 +151,7 @@ export const getMyProfile = async (): Promise<UserProfile> => {
 
 export const updateMyProfile = async (data: UserUpdatePayload): Promise<UserProfile> => {
     const token = await getAuthToken();
-    const response = await fetch(`${API_URL}/users/me`, {
+    const response = await fetch(`${API_BASE_URL}/users/me`, {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json',

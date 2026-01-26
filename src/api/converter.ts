@@ -1,6 +1,5 @@
 import { getAuthToken } from './getAuthToken';
-
-const API_URL = 'https://api.solufuse.com'; // Base URL for the converter router
+import { API_BASE_URL } from '@/config/apiConfig';
 
 /**
  * Converts specified files (LF1S/SI2S) from a project folder.
@@ -17,7 +16,7 @@ export const convertFiles = async (
     action: 'view' | 'download' = 'download',
     outputFormat: 'excel' | 'json' = 'excel'
 ): Promise<any> => {
-    const url = new URL(`${API_URL}/converter/${projectId}`);
+    const url = new URL(`${API_BASE_URL}/converter/${projectId}`);
     url.searchParams.append('action', action);
     url.searchParams.append('output_format', outputFormat);
     const token = await getAuthToken();
@@ -79,7 +78,7 @@ export const convertAndSaveFiles = async (
     filenames: string[],
     outputFormat: 'json' | 'excel'
 ): Promise<any> => {
-    const url = new URL(`${API_URL}/converter/${projectId}/save`);
+    const url = new URL(`${API_BASE_URL}/converter/${projectId}/save`);
     url.searchParams.append('output_format', outputFormat);
     const token = await getAuthToken();
 

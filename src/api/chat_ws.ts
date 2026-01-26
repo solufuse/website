@@ -1,7 +1,6 @@
 
 import { getAuthToken } from '@/api/getAuthToken';
-
-const WS_BASE_URL = 'wss://api.solufuse.com/ws/v1/chat';
+import { WS_BASE_URL } from '@/config/apiConfig';
 
 export type WebSocketEvent = 
   | { type: 'message'; data: any }

@@ -39,8 +39,8 @@ const AuthContext = createContext<AuthContextType>({
 
 // This is a private helper function to fetch the user profile during auth initialization.
 const fetchUserProfile = async (token: string): Promise<UserProfile | null> => {
-    const API_URL = 'https://api.solufuse.com';
-    const response = await fetch(`${API_URL}/users/me`,
+    const API_BASE_URL = 'https://api.solufuse.com';
+    const response = await fetch(`${API_BASE_URL}/users/me`,
         {
         headers: {
             'Authorization': `Bearer ${token}`,
