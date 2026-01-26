@@ -2,10 +2,61 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
+// Background component inspired by Midjourney's style
+const NumbersBackground: React.FC = () => {
+  const [numbers, setNumbers] = useState<{ x: number; y: number; char: string; opacity: number }[]>([]);
+
+  useEffect(() => {
+    const generateNumbers = () => {
+      const newNumbers = [];
+      const chars = '0123456789';
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const density = Math.floor((vw * vh) / 5000); // Adjust density based on screen size
+
+      for (let i = 0; i < density; i++) {
+        newNumbers.push({
+          x: Math.random() * 100,
+          y: Math.random() * 100,
+          char: chars[Math.floor(Math.random() * chars.length)],
+          opacity: Math.random() * 0.15 + 0.05, // Random opacity for depth
+        });
+      }
+      setNumbers(newNumbers);
+    };
+
+    generateNumbers();
+    window.addEventListener('resize', generateNumbers); // Optional: regenerate on resize
+
+    return () => window.removeEventListener('resize', generateNumbers);
+  }, []);
+
+  return (
+    <div className="absolute inset-0 z-0 overflow-hidden" aria-hidden="true">
+      {numbers.map((num, i) => (
+        <span
+          key={i}
+          className="absolute text-blue-500"
+          style={{
+            left: `${num.x}%`,
+            top: `${num.y}%`,
+            fontSize: '12px',
+            opacity: num.opacity,
+            userSelect: 'none',
+          }}
+        >
+          {num.char}
+        </span>
+      ))}
+    </div>
+  );
+};
+
+
 // A simple component to render a line in the terminal
 const TerminalLine: React.FC<{ children: React.ReactNode; isUser?: boolean }> = ({ children, isUser }) => (
   <div className={`flex items-start ${isUser ? 'text-green-400' : 'text-gray-300'}`}>
-    {isUser && <span className="flex-shrink-0 mr-2">{'>'}</span>}
+    {isUser && <span className="flex-shrink-0 mr-2">{ '>' }</span>}
     <div className="flex-grow">{children}</div>
   </div>
 );
@@ -68,10 +119,11 @@ const HomePage: React.FC = () => {
   }, []);
 
   return (
-    <div className="bg-black min-h-screen p-4 sm:p-8 font-mono text-lg flex flex-col justify-center">
-      <div className="w-full max-w-4xl mx-auto bg-[#1a1b26] rounded-lg shadow-2xl overflow-hidden border border-gray-700">
+    <div className="bg-[#0D0E1A] min-h-screen p-4 sm:p-8 font-mono text-lg flex flex-col justify-center relative">
+       <NumbersBackground />
+      <div className="w-full max-w-4xl mx-auto bg-[#1a1b26]/70 backdrop-blur-sm rounded-lg shadow-2xl overflow-hidden border border-gray-700 z-10">
         {/* Terminal Header */}
-        <div className="flex items-center justify-between p-3 bg-[#333] border-b border-gray-700">
+        <div className="flex items-center justify-between p-3 bg-[#333]/80 border-b border-gray-700">
           <div className="flex items-center gap-2">
             <span className="w-4 h-4 rounded-full bg-red-500"></span>
             <span className="w-4 h-4 rounded-full bg-yellow-500"></span>
@@ -85,19 +137,21 @@ const HomePage: React.FC = () => {
         <div className="p-4 h-auto min-h-[60vh] overflow-y-auto space-y-2">
           {lines}
           <div className="flex items-center">
-            <span className="text-green-400 mr-2">{'>'}</span>
+            <span className="text-green-400 mr-2">{ '>' }</span>
             <span className="bg-green-400 w-2 h-5 animate-pulse"></span>
           </div>
         </div>
       </div>
-      <footer className="text-center py-4 mt-4 text-gray-500 text-sm">
+      <footer className="text-center py-4 mt-4 text-gray-500 text-sm z-10">
         <p>This is a simulation. Navigate to the application pages:</p>
-        <nav className="flex justify-center items-center gap-4 mt-2">
+        <nav className="flex flex-wrap justify-center items-center gap-4 mt-2">
             <Link to="/chats" className="text-blue-400 hover:underline">Chat</Link>
             <span className="text-gray-600">|</span>
             <Link to="/chats-old" className="text-blue-400 hover:underline">Legacy Chat</Link>
             <span className="text-gray-600">|</span>
             <Link to="/ws-test" className="text-blue-400 hover:underline">WebSocket Test</Link>
+            <span className="text-gray-600">|</span>
+            <a href="https://discord.gg/A9mxUUUvEf" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Discord</a>
         </nav>
         <p className="mt-4">Built by Solufuse, a space electrical AI with a soul.</p>
       </footer>
