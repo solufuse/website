@@ -2,82 +2,76 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
+const SolufuseLogo = () => (
+  <svg width="80" height="80" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="mx-auto mb-4">
+    <path d="M62.5 12.5H37.5L25 43.75H43.75L31.25 68.75L75 31.25H50L62.5 12.5Z" className="stroke-red-500" strokeWidth="5" strokeLinejoin="round" />
+    <path d="M62.5 12.5H37.5L25 43.75H43.75L31.25 68.75L75 31.25H50L62.5 12.5Z" className="stroke-blue-500" strokeWidth="5" strokeLinejoin="round" style={{ strokeDasharray: '150', strokeDashoffset: '150', animation: 'draw 2s ease-in-out forwards' }} />
+  </svg>
+);
+
+
 const HomePage: React.FC = () => {
   return (
-    <div className="bg-gray-900 min-h-screen p-8 text-gray-200 font-sans" style={{
-      background: 'linear-gradient(135deg, rgba(10, 20, 40, 0.95), rgba(40, 10, 20, 0.95)), radial-gradient(circle at top left, rgba(255, 0, 0, 0.1), transparent 30%), radial-gradient(circle at bottom right, rgba(0, 0, 255, 0.1), transparent 30%)',
-      backgroundBlendMode: 'screen'
+    <div className="bg-gray-900 min-h-screen text-gray-200 font-sans" style={{
+      background: 'radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%)'
     }}>
-      <div className="max-w-4xl mx-auto">
-        <header className="text-center mb-12">
-          <h1 className="text-5xl font-bold text-white mb-2">Solufuse</h1>
-          <p className="text-xl text-gray-400">Project Release Notes - January 2026</p>
+      <div className="relative z-10 max-w-5xl mx-auto px-4">
+        <header className="text-center py-20">
+          <SolufuseLogo />
+          <h1 className="text-6xl font-extrabold text-white tracking-tighter">
+            Solufuse
+          </h1>
+          <p className="mt-3 text-2xl font-semibold text-red-400">
+            ELECTRICAL ENGINEERING, SIMPLIFIED.
+          </p>
+          <p className="mt-6 max-w-2xl mx-auto text-lg text-gray-400">
+            From NFC 13-200 calculations to complex ETAP file analysis, Solufuse provides the tools you need to streamline your workflow and ensure project accuracy.
+          </p>
+          <nav className="flex justify-center items-center gap-6 mt-10">
+            <Link to="/chats" className="text-lg text-gray-300 hover:text-red-400 transition-colors">Chat</Link>
+            <Link to="/chats-old" className="text-lg text-gray-300 hover:text-blue-400 transition-colors">Legacy Chat</Link>
+            <Link to="/ws-test" className="text-lg text-gray-300 hover:text-green-400 transition-colors">WebSocket Test</Link>
+          </nav>
         </header>
 
-        <nav className="flex justify-center space-x-4 mb-12">
-          <Link to="/chats" className="text-white hover:text-red-400 transition-colors duration-300">Chat</Link>
-          <Link to="/chats-old" className="text-white hover:text-blue-400 transition-colors duration-300">Legacy Chat</Link>
-          <Link to="/ws-test" className="text-white hover:text-green-400 transition-colors duration-300">WebSocket Test</Link>
-        </nav>
-
-        <main className="space-y-16">
-          {/* Page 1: NFC 13-200 Calculations */}
-          <section className="bg-gray-800 bg-opacity-50 p-8 rounded-lg shadow-lg" style={{ boxShadow: '0 0 15px rgba(255, 0, 0, 0.2), 0 0 15px rgba(0, 0, 255, 0.2)' }}>
-            <div className="A4-page">
-              <h2 className="text-3xl font-semibold text-red-400 border-b-2 border-red-400 pb-2 mb-6">NFC 13-200 Standard: Cable Calculations</h2>
-              <div className="space-y-4">
-                <p>We are proud to announce the full integration of the <strong className="font-bold">NFC 13-200</strong> standard calculations. This major update allows users to accurately size cables for high-voltage electrical installations in France.</p>
-                <ul className="list-disc list-inside space-y-2 pl-4">
-                  <li>Automated calculation of cable cross-sections.</li>
-                  <li>Consideration of installation conditions and correction factors.</li>
-                  <li>Verification of voltage drop and short-circuit withstand.</li>
-                  <li>Generation of detailed calculation reports.</li>
-                </ul>
-                <p>This feature aims to simplify the engineering process and ensure regulatory compliance for your projects.</p>
-              </div>
+        <main className="pb-20">
+          <h2 className="text-4xl font-bold text-center mb-12 text-white">Core Features</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Feature 1: NFC 13-200 */}
+            <div className="bg-gray-800/50 p-8 rounded-xl border border-gray-700 shadow-lg backdrop-blur-sm">
+              <h3 className="text-2xl font-semibold text-red-400 mb-4">NFC 13-200 Cable Calculations</h3>
+              <p className="text-gray-400">
+                Full integration of NFC 13-200 standard for precise high-voltage cable sizing. Automate cross-section calculations, verify voltage drop, and generate detailed reports to ensure regulatory compliance.
+              </p>
             </div>
-          </section>
 
-          {/* Page 2: ETAP Topology & Short-Circuit */}
-          <section className="bg-gray-800 bg-opacity-50 p-8 rounded-lg shadow-lg" style={{ boxShadow: '0 0 15px rgba(0, 0, 255, 0.2), 0 0 15px rgba(255, 0, 0, 0.2)' }}>
-            <div className="A4-page">
-              <h2 className="text-3xl font-semibold text-blue-400 border-b-2 border-blue-400 pb-2 mb-6">Advanced ETAP File Analysis</h2>
-              <div className="space-y-4">
-                <p>Solufuse can now interact directly with your <strong className="font-bold">ETAP</strong> project files to extract crucial information and perform complex analyses.</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-6">
-                  <div>
-                    <h3 className="text-2xl font-semibold text-blue-300 mb-2">Topology Definition</h3>
-                    <p>Import your ETAP files to automatically visualize and validate your electrical network topology. Our tool identifies connections, equipment, and configurations to give you a clear and quick overview.</p>
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-semibold text-blue-300 mb-2">Short-Circuit Current Calculation</h3>
-                    <p>Determine the short-circuit currents (Isc) at different points in your installation. Solufuse analyzes data from your ETAP files to provide accurate results, essential for sizing protection devices and ensuring installation safety.</p>
-                  </div>
-                </div>
-              </div>
+            {/* Feature 2: ETAP Analysis */}
+            <div className="bg-gray-800/50 p-8 rounded-xl border border-gray-700 shadow-lg backdrop-blur-sm">
+              <h3 className="text-2xl font-semibold text-blue-400 mb-4">Advanced ETAP File Analysis</h3>
+              <p className="text-gray-400">
+                Directly import and analyze ETAP project files. Automatically define and validate your network topology, and calculate short-circuit currents (Isc) for robust protection and safety sizing.
+              </p>
             </div>
-          </section>
+          </div>
 
-          {/* Page 3: Documentation and Links */}
-          <section className="bg-gray-800 bg-opacity-50 p-8 rounded-lg shadow-lg text-center" style={{ boxShadow: '0 0 15px rgba(255, 0, 0, 0.2), 0 0 15px rgba(0, 0, 255, 0.2)' }}>
-            <div className="A4-page">
-              <h2 className="text-3xl font-semibold text-gray-300 border-b-2 border-gray-400 pb-2 mb-6">Resources and Documentation</h2>
-              <p className="mb-6">To learn more about these new features and how to use Solufuse, please refer to our comprehensive documentation.</p>
-              <a 
-                href="https://docs.solufuse.com" // Placeholder link
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition-transform transform hover:scale-105 inline-block"
-              >
-                View Documentation
-              </a>
-            </div>
-          </section>
+          <div className="text-center mt-20">
+            <h2 className="text-3xl font-bold text-white mb-4">Ready to Dive Deeper?</h2>
+            <p className="text-gray-400 mb-8">Explore our documentation to learn more about our features.</p>
+            <a 
+              href="https://docs.solufuse.com"
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition-transform transform hover:scale-105 inline-block"
+            >
+              View Documentation
+            </a>
+          </div>
         </main>
-
-        <footer className="text-center mt-16 text-gray-500">
-          <p>&copy; 2026 Solufuse. All rights reserved.</p>
-          <p className="mt-2">
+        
+        <footer className="text-center py-8 mt-16 text-gray-500 border-t border-gray-800">
+          <p>Built by Solufuse, a space electrical AI with a soul.</p>
+          <p className="mt-2 text-sm">
             <a href="https://solufuse.com" className="hover:text-red-400 transition">solufuse.com</a> | 
             <a href="https://api.solufuse.com" className="hover:text-blue-400 transition"> API</a>
           </p>
@@ -85,27 +79,9 @@ const HomePage: React.FC = () => {
       </div>
 
       <style>{`
-        .A4-page {
-          background: rgba(10, 10, 20, 0.4);
-          padding: 2rem;
-          margin: 0 auto;
-          box-shadow: 0 0 0.5cm rgba(0,0,0,0.5);
-          min-height: 29.7cm; /* A4 Height */
-          max-width: 21cm; /* A4 Width */
-          display: flex;
-          flex-direction: column;
-        }
-        @media print {
-          body {
-            background: none;
-          }
-          .A4-page {
-            box-shadow: none;
-            margin: 0;
-            height: auto;
-          }
-          section {
-            page-break-after: always;
+        @keyframes draw {
+          to {
+            stroke-dashoffset: 0;
           }
         }
       `}</style>
