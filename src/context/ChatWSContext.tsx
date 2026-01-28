@@ -1,6 +1,7 @@
 
 import React, { createContext, useState, useContext, ReactNode, useCallback, useRef } from 'react';
 import { WebSocketConnection, WebSocketEvent } from '@/api/chat_ws';
+import { getChatHistoryPage } from '@/api/chat_http'; 
 import { useAuthContext } from './authcontext';
 import type { Message } from '@/types/types_chat';
 
@@ -9,11 +10,14 @@ interface ChatWSContextType {
     messages: Message[];
     isStreaming: boolean;
     isLoading: boolean;
+    isLoadingMore: boolean; 
     connectionStatus: string;
     error: string | null;
+    hasMoreHistory: boolean;
     connect: (projectId: string, chatId: string) => void;
     disconnect: () => void;
     sendMessage: (message: string) => void;
+    loadMoreHistory: () => void;
 }
 
 const ChatWSContext = createContext<ChatWSContextType | undefined>(undefined);
@@ -22,19 +26,24 @@ const ChatWSContext = createContext<ChatWSContextType | undefined>(undefined);
 export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const { user } = useAuthContext();
     const wsConnection = useRef<WebSocketConnection | null>(null);
-    const optimisticMessageIdRef = useRef<string | null>(null); // For user messages
-    const assistantMessageIdRef = useRef<string | null>(null); // For assistant messages
+    const optimisticMessageIdRef = useRef<string | null>(null);
+    const assistantMessageIdRef = useRef<string | null>(null);
 
     const [messages, setMessages] = useState<Message[]>([]);
     const [isStreaming, setIsStreaming] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [connectionStatus, setConnectionStatus] = useState('Disconnected');
     const [error, setError] = useState<string | null>(null);
+
+    const currentPage = useRef(1);
+    const [hasMoreHistory, setHasMoreHistory] = useState(true);
+    const currentChatId = useRef<string | null>(null);
+    const currentProjectId = useRef<string | null>(null);
 
     const handleWsEvent = useCallback((event: WebSocketEvent) => {
         console.log('WebSocket Event:', event);
 
-        // --- Start a new assistant message if one isn't active ---
         if (['tool_code', 'chunk', 'tool_output'].includes(event.type) && !assistantMessageIdRef.current) {
             const newAssistantId = `assistant-streaming-${Date.now()}`;
             assistantMessageIdRef.current = newAssistantId;
@@ -54,11 +63,6 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     setIsLoading(false);
                 }
                 break;
-            
-            case 'full_history':
-                setMessages(event.data);
-                setIsLoading(false);
-                break;
 
             case 'message':
                 setMessages(prev => {
@@ -75,7 +79,6 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 });
                 break;
 
-            // --- MODIFIED: Handle new structured events ---
             case 'tool_code':
                 setMessages(prev => prev.map(m =>
                     m.id === assistantMessageIdRef.current
@@ -93,7 +96,7 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 break;
 
             case 'chunk':
-                setMessages(prev => prev.map(m =>
+                 setMessages(prev => prev.map(m =>
                     m.id === assistantMessageIdRef.current
                         ? { ...m, content: m.content + event.data }
                         : m
@@ -103,15 +106,15 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             case 'event':
                 if (event.data === 'end_of_stream') {
                     setIsStreaming(false);
-                    assistantMessageIdRef.current = null; // Reset for the next message
+                    assistantMessageIdRef.current = null;
                 }
                 break;
-            // --- END OF MODIFICATION ---
 
             case 'error':
                 setError(event.data);
                 setConnectionStatus('Error');
                 setIsLoading(false);
+                setIsLoadingMore(false);
                 setIsStreaming(false);
                 assistantMessageIdRef.current = null;
                 break;
@@ -125,13 +128,36 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         }
     }, []);
 
-    const connect = useCallback((projectId: string, chatId: string) => {
-        if (!user) return;
+    const loadMoreHistory = useCallback(async () => {
+        if (!user?.token || !currentProjectId.current || !currentChatId.current || isLoading || isLoadingMore || !hasMoreHistory) {
+            return;
+        }
+
+        setIsLoadingMore(true);
+        try {
+            const nextPage = currentPage.current + 1;
+            const history = await getChatHistoryPage(currentProjectId.current, currentChatId.current, user.token, nextPage);
+            
+            if (history.length > 0) {
+                setMessages(prev => [...history, ...prev]);
+                currentPage.current = nextPage;
+            } else {
+                setHasMoreHistory(false);
+            }
+        } catch (e: any) {
+            setError(e.message || 'Failed to load more history');
+        } finally {
+            setIsLoadingMore(false);
+        }
+    }, [user?.token, isLoading, isLoadingMore, hasMoreHistory]);
+
+    const connect = useCallback(async (projectId: string, chatId: string) => {
+        if (!user?.token) return;
         if (wsConnection.current?.isConnected() && wsConnection.current.getChatId() === chatId) return;
         
         wsConnection.current?.closeConnection();
 
-        console.log(`Connecting to WebSocket for chat ${chatId}. Resetting state.`);
+        console.log(`Connecting to WebSocket for chat ${chatId}. Resetting state and loading history.`);
         setIsLoading(true);
         setIsStreaming(false);
         setError(null);
@@ -139,6 +165,24 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         setConnectionStatus('Disconnected');
         optimisticMessageIdRef.current = null;
         assistantMessageIdRef.current = null;
+        
+        currentPage.current = 1;
+        setHasMoreHistory(true);
+        currentProjectId.current = projectId;
+        currentChatId.current = chatId;
+
+        try {
+            const initialHistory = await getChatHistoryPage(projectId, chatId, user.token, 1);
+            setMessages(initialHistory);
+            if (initialHistory.length < 30) {
+                setHasMoreHistory(false);
+            }
+        } catch (e: any) {
+            setError(e.message || 'Failed to load initial history');
+            setConnectionStatus('Error');
+            setIsLoading(false);
+            return;
+        }
 
         const newConnection = new WebSocketConnection({
             project_id: projectId,
@@ -148,16 +192,18 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             onClose: (_code, reason) => {
                 console.log('WebSocket closed:', reason);
                 setConnectionStatus('Disconnected');
+                setIsLoading(false);
             },
             onError: (err) => {
                 console.error('WebSocket error:', err);
                 setError('An error occurred with the connection.');
+                setIsLoading(false);
             },
         });
 
         wsConnection.current = newConnection;
         newConnection.connect();
-    }, [user, handleWsEvent]);
+    }, [user?.token, handleWsEvent]);
 
     const disconnect = useCallback(() => {
         if (wsConnection.current) {
@@ -188,11 +234,14 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         messages,
         isStreaming,
         isLoading,
+        isLoadingMore,
         connectionStatus,
         error,
+        hasMoreHistory,
         connect,
         disconnect,
-        sendMessage
+        sendMessage,
+        loadMoreHistory,
     };
 
     return <ChatWSContext.Provider value={value}>{children}</ChatWSContext.Provider>;

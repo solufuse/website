@@ -42,7 +42,7 @@ const ChatPage: React.FC = () => {
     const { user, loading: authLoading, loginWithGoogle, logout, updateUsername } = useAuthContext();
     const { currentProject, setCurrentProjectById } = useProjectContext();
     const { chats, isCreatingChat, createChat, deleteChat, loadChats: loadChatsForSidebar, setActiveChatId: setActiveChatId_classic } = useChatContext();
-    const { messages, isStreaming, isLoading: isWsLoading, connectionStatus, error: wsError, connect, disconnect, sendMessage: sendWsMessage } = useChatWSContext();
+    const { messages, isStreaming, isLoading: isWsLoading, isLoadingMore, hasMoreHistory, connectionStatus, error: wsError, connect, disconnect, sendMessage: sendWsMessage, loadMoreHistory } = useChatWSContext();
     const { projectId, chatId, messageId } = useParams<{ projectId?: string; chatId?: string; messageId?: string; }>();
     const navigate = useNavigate();
     
@@ -112,15 +112,15 @@ const ChatPage: React.FC = () => {
     useEffect(() => {
         const scrollViewport = scrollAreaRef.current?.querySelector('div[data-radix-scroll-area-viewport]');
         const handleScroll = () => {
-            if (scrollViewport && !isStreaming) { // <-- Added !isStreaming check
+            if (scrollViewport && !isStreaming) {
                 const { scrollTop, scrollHeight, clientHeight } = scrollViewport;
-                const isAtBottom = scrollHeight - scrollTop <= clientHeight + 1; 
+                const isAtBottom = scrollHeight - scrollTop <= clientHeight + 1;
                 setUserScrolledUp(!isAtBottom);
             }
         };
         scrollViewport?.addEventListener('scroll', handleScroll);
         return () => scrollViewport?.removeEventListener('scroll', handleScroll);
-    }, [isStreaming]); // <-- Added isStreaming dependency
+    }, [isStreaming]);
 
     useEffect(() => {
         if (textareaRef.current) {
@@ -130,7 +130,6 @@ const ChatPage: React.FC = () => {
     }, [input]);
 
     useEffect(() => {
-        // Use a timeout to ensure messages are rendered before scrolling
         setTimeout(() => {
             if (messageId && messages.length > 0) {
                 handleScrollToMessage(messageId);
@@ -198,7 +197,7 @@ const ChatPage: React.FC = () => {
             <Sidebar isSidebarOpen={isSidebarOpen} onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} conversations={conversationsWithOwners} activeConversationId={chatId ?? null} isCreatingChat={isCreatingChat} onNewConversation={handleNewConversation} onConversationSelect={handleConversationSelect} onDeleteConversation={deleteChat} />
             <div className="flex flex-1 flex-col overflow-hidden">
                 <Header user={user} onToggleSettings={() => setIsSettingsOpen(true)} onOpenProfile={() => setIsProfileOpen(true)} onLogin={loginWithGoogle} onLogout={logout} currentProject={currentProject} />
-                <StatusIndicator status={connectionStatus} error={wsError} isLoading={isWsLoading && messages.length === 0} />
+                <StatusIndicator status={connectionStatus} error={wsError} isLoading={isWsLoading} />
                 <div className="flex flex-1 overflow-hidden">
                     <div className="flex flex-1 flex-col min-w-0 relative">
                         <ScrollArea className="flex-1" ref={scrollAreaRef}>
@@ -209,6 +208,13 @@ const ChatPage: React.FC = () => {
                                             <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)]"><Bot size={72} /><p className="text-2xl mt-4">How can I help you today?</p><p className='mt-2'>Select a chat or start a new one.</p></div>
                                         ) : (
                                             <div className="space-y-6">
+                                                {hasMoreHistory && (
+                                                    <div className="text-center">
+                                                        <Button onClick={loadMoreHistory} disabled={isLoadingMore} variant="outline" size="sm">
+                                                            {isLoadingMore ? 'Loading...' : 'Load More Messages'}
+                                                        </Button>
+                                                    </div>
+                                                )}
                                                 {messages.map((message) => {
                                                     const isOwnMessage = message.role === 'user' && user?.uid === message.user_id;
                                                     const shareId = message.commit_hash || message.id;
