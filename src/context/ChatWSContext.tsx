@@ -141,7 +141,7 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             const history = await getChatHistoryPage(currentProjectId.current, currentChatId.current, token, nextPage);
             
             if (history.length > 0) {
-                setMessages(prev => [...history, ...prev]);
+                setMessages(prev => [...history.reverse(), ...prev]);
                 currentPage.current = nextPage;
             } else {
                 setHasMoreHistory(false);
@@ -175,7 +175,7 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         try {
             const token = await getAuthToken();
             const initialHistory = await getChatHistoryPage(projectId, chatId, token, 1);
-            setMessages(initialHistory);
+            setMessages(initialHistory.reverse());
             if (initialHistory.length < 30) { 
                 setHasMoreHistory(false);
             }
