@@ -59,7 +59,6 @@ export interface UserProfile extends UserPublic {
     last_name?: string;
     birth_date?: string; // ISO 8601 date string (YYYY-MM-DD)
     projects: any[]; // This now correctly references the imported type
-    token?: string;
 }
 
 // Admin-level view of a user's profile

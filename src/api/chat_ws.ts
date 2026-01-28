@@ -2,7 +2,7 @@
 import { getAuthToken } from '@/api/getAuthToken';
 import { WS_BASE_URL } from '@/config/apiConfig';
 
-export type WebSocketEvent = 
+export type WebSocketEvent =
   | { type: 'message'; data: any }
   | { type: 'chunk'; data: string }
   | { type: 'status'; data: string }
@@ -47,9 +47,9 @@ export class WebSocketConnection {
 
             this.ws.onopen = () => {
                 console.log("WebSocket connection established.");
-                this.ws?.send(JSON.stringify({ 
+                this.ws?.send(JSON.stringify({
                     token: token,
-                    model: this.options.model 
+                    model: this.options.model
                 }));
                 this.options.onOpen?.();
 
@@ -111,7 +111,7 @@ export class WebSocketConnection {
     public isConnected = (): boolean => {
         return this.ws?.readyState === WebSocket.OPEN;
     }
-    
+
     public getChatId = (): string => {
         return this.options.chat_id;
     }
