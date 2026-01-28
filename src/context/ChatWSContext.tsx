@@ -1,16 +1,17 @@
 
 import React, { createContext, useState, useContext, ReactNode, useCallback, useRef } from 'react';
 import { WebSocketConnection, WebSocketEvent } from '@/api/chat_ws';
-import { getChatHistoryPage } from '@/api/chat_http'; 
+import { getChatHistoryPage } from '@/api/chat_http';
 import { useAuthContext } from './authcontext';
 import type { Message } from '@/types/types_chat';
+import { getAuthToken } from '@/api/getAuthToken';
 
 // --- CONTEXT SHAPE ---
 interface ChatWSContextType {
     messages: Message[];
     isStreaming: boolean;
     isLoading: boolean;
-    isLoadingMore: boolean; 
+    isLoadingMore: boolean;
     connectionStatus: string;
     error: string | null;
     hasMoreHistory: boolean;
@@ -129,14 +130,15 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }, []);
 
     const loadMoreHistory = useCallback(async () => {
-        if (!user?.token || !currentProjectId.current || !currentChatId.current || isLoading || isLoadingMore || !hasMoreHistory) {
+        if (!currentProjectId.current || !currentChatId.current || isLoading || isLoadingMore || !hasMoreHistory) {
             return;
         }
 
         setIsLoadingMore(true);
         try {
+            const token = await getAuthToken();
             const nextPage = currentPage.current + 1;
-            const history = await getChatHistoryPage(currentProjectId.current, currentChatId.current, user.token, nextPage);
+            const history = await getChatHistoryPage(currentProjectId.current, currentChatId.current, token, nextPage);
             
             if (history.length > 0) {
                 setMessages(prev => [...history, ...prev]);
@@ -149,10 +151,9 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         } finally {
             setIsLoadingMore(false);
         }
-    }, [user?.token, isLoading, isLoadingMore, hasMoreHistory]);
+    }, [isLoading, isLoadingMore, hasMoreHistory]);
 
     const connect = useCallback(async (projectId: string, chatId: string) => {
-        if (!user?.token) return;
         if (wsConnection.current?.isConnected() && wsConnection.current.getChatId() === chatId) return;
         
         wsConnection.current?.closeConnection();
@@ -172,9 +173,10 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         currentChatId.current = chatId;
 
         try {
-            const initialHistory = await getChatHistoryPage(projectId, chatId, user.token, 1);
+            const token = await getAuthToken();
+            const initialHistory = await getChatHistoryPage(projectId, chatId, token, 1);
             setMessages(initialHistory);
-            if (initialHistory.length < 30) {
+            if (initialHistory.length < 30) { 
                 setHasMoreHistory(false);
             }
         } catch (e: any) {
@@ -203,7 +205,7 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
         wsConnection.current = newConnection;
         newConnection.connect();
-    }, [user?.token, handleWsEvent]);
+    }, [handleWsEvent]);
 
     const disconnect = useCallback(() => {
         if (wsConnection.current) {
