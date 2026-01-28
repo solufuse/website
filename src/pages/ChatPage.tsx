@@ -170,6 +170,25 @@ const ChatPage: React.FC = () => {
         }
     };
 
+    const handlePaste = async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+        const items = event.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                const file = items[i].getAsFile();
+                if (file && currentProject) {
+                    try {
+                        await uploadFiles([file], { projectId: currentProject.id });
+                        setFileExplorerKey(Date.now());
+                        alert('Image uploaded successfully!');
+                    } catch (error) {
+                        console.error("Failed to upload image:", error);
+                        alert("Sorry, we couldn't upload the image.");
+                    }
+                }
+            }
+        }
+    };
+
     if (authLoading) return <div className="flex h-screen w-full items-center justify-center"><p>Loading...</p></div>;
     
     const loadingComponent = <div className="loading-overlay">Loading...</div>;
@@ -311,7 +330,7 @@ const ChatPage: React.FC = () => {
                                     }
                                 }} multiple className="hidden" />
                                 <div className="relative flex w-full items-end space-x-2 p-2 rounded-lg bg-muted">
-                                    <Textarea ref={textareaRef} id="message" placeholder="Type your message..." className="flex-1 bg-transparent border-none focus:ring-0 focus:outline-none resize-none overflow-y-auto max-h-48 text-base leading-6 pr-12" autoComplete="off" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} disabled={!currentProject || isWsLoading || connectionStatus !== 'Connected'} rows={1} />
+                                    <Textarea ref={textareaRef} id="message" placeholder="Type your message..." className="flex-1 bg-transparent border-none focus:ring-0 focus:outline-none resize-none overflow-y-auto max-h-48 text-base leading-6 pr-12" autoComplete="off" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} onPaste={handlePaste} disabled={!currentProject || isWsLoading || connectionStatus !== 'Connected'} rows={1} />
                                     <Button type="submit" size="icon" onClick={handleSend} disabled={!input.trim() || isWsLoading || connectionStatus !== 'Connected'} className="rounded-full absolute bottom-4 right-4">
                                         <Send className={isSidebarOpen ? "h-4 w-4" : "h-5 w-5"} /><span className="sr-only">Send</span>
                                     </Button>
