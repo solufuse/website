@@ -104,7 +104,7 @@ const ChatPage: React.FC = () => {
     useEffect(() => { setActiveChatId_classic(chatId ?? null); }, [chatId, setActiveChatId_classic]);
     
     useEffect(() => {
-        if (!userScrolledUp) {
+        if (isStreaming || !userScrolledUp) {
             scrollToBottom('auto');
         }
     }, [messages, isStreaming, userScrolledUp]);
@@ -112,15 +112,15 @@ const ChatPage: React.FC = () => {
     useEffect(() => {
         const scrollViewport = scrollAreaRef.current?.querySelector('div[data-radix-scroll-area-viewport]');
         const handleScroll = () => {
-            if (scrollViewport) {
+            if (scrollViewport && !isStreaming) { // <-- Added !isStreaming check
                 const { scrollTop, scrollHeight, clientHeight } = scrollViewport;
-                const isAtBottom = scrollHeight - scrollTop <= clientHeight + 1; // +1 for pixel perfection
+                const isAtBottom = scrollHeight - scrollTop <= clientHeight + 1; 
                 setUserScrolledUp(!isAtBottom);
             }
         };
         scrollViewport?.addEventListener('scroll', handleScroll);
         return () => scrollViewport?.removeEventListener('scroll', handleScroll);
-    }, []);
+    }, [isStreaming]); // <-- Added isStreaming dependency
 
     useEffect(() => {
         if (textareaRef.current) {
