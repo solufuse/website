@@ -31,7 +31,7 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const [connectionStatus, setConnectionStatus] = useState('Disconnected');
     const [error, setError] = useState<string | null>(null);
 
-    const handleWsEvent = (event: WebSocketEvent) => {
+    const handleWsEvent = useCallback((event: WebSocketEvent) => {
         console.log('WebSocket Event:', event);
 
         // --- Start a new assistant message if one isn't active ---
@@ -39,11 +39,11 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             const newAssistantId = `assistant-streaming-${Date.now()}`;
             assistantMessageIdRef.current = newAssistantId;
             setIsStreaming(true);
-            setMessages(prev => [...prev, { 
-                id: newAssistantId, 
-                role: 'assistant', 
-                content: '', 
-                timestamp: new Date().toISOString() 
+            setMessages(prev => [...prev, {
+                id: newAssistantId,
+                role: 'assistant',
+                content: '',
+                timestamp: new Date().toISOString()
             }]);
         }
 
@@ -55,7 +55,7 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 }
                 break;
             
-            case 'full_history': 
+            case 'full_history':
                 setMessages(event.data);
                 setIsLoading(false);
                 break;
@@ -63,10 +63,10 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             case 'message':
                 setMessages(prev => {
                     if (event.data.role === 'user' && optimisticMessageIdRef.current) {
-                        const newMessages = prev.map(m => 
+                        const newMessages = prev.map(m =>
                             m.id === optimisticMessageIdRef.current ? event.data : m
                         );
-                        optimisticMessageIdRef.current = null; 
+                        optimisticMessageIdRef.current = null;
                         return newMessages;
                     } else {
                         const filteredPrev = prev.filter(m => m.id !== event.data.id);
@@ -77,24 +77,24 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
             // --- MODIFIED: Handle new structured events ---
             case 'tool_code':
-                setMessages(prev => prev.map(m => 
-                    m.id === assistantMessageIdRef.current 
+                setMessages(prev => prev.map(m =>
+                    m.id === assistantMessageIdRef.current
                         ? { ...m, tool_code: (m.tool_code || '') + event.data }
                         : m
                 ));
                 break;
             
             case 'tool_output':
-                setMessages(prev => prev.map(m => 
-                    m.id === assistantMessageIdRef.current 
+                setMessages(prev => prev.map(m =>
+                    m.id === assistantMessageIdRef.current
                         ? { ...m, tool_output: (m.tool_output || '') + event.data }
                         : m
                 ));
                 break;
 
             case 'chunk':
-                setMessages(prev => prev.map(m => 
-                    m.id === assistantMessageIdRef.current 
+                setMessages(prev => prev.map(m =>
+                    m.id === assistantMessageIdRef.current
                         ? { ...m, content: m.content + event.data }
                         : m
                 ));
@@ -123,17 +123,17 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             default:
                 console.warn('Unhandled WebSocket event:', event);
         }
-    };
+    }, []);
 
     const connect = useCallback((projectId: string, chatId: string) => {
         if (!user) return;
         if (wsConnection.current?.isConnected() && wsConnection.current.getChatId() === chatId) return;
         
-        wsConnection.current?.closeConnection(); 
+        wsConnection.current?.closeConnection();
 
         console.log(`Connecting to WebSocket for chat ${chatId}. Resetting state.`);
         setIsLoading(true);
-        setIsStreaming(false); 
+        setIsStreaming(false);
         setError(null);
         setMessages([]);
         setConnectionStatus('Disconnected');
@@ -157,8 +157,7 @@ export const ChatWSProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
         wsConnection.current = newConnection;
         newConnection.connect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user]);
+    }, [user, handleWsEvent]);
 
     const disconnect = useCallback(() => {
         if (wsConnection.current) {
