@@ -182,23 +182,13 @@ const WebSocketTestPage = () => {
                 currentProject={currentProject}
             />
             <main className="flex-1 flex flex-col p-4 gap-4 overflow-hidden">
-                <h1 className="text-2xl font-bold shrink-0">WebSocket Test Page</h1>
-                
-                <Card className="shrink-0">
-                    <CardHeader>
-                        <CardTitle>Connection</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="font-mono text-sm">Status: <span className={connectionStatus === 'Connected' ? 'text-green-500' : 'text-red-500'}>{connectionStatus}</span>
-                        {connectionStatus === 'Connected' && <span>{` to ${projectId}/${chatId}`}</span>}
-                        </p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
-                            <Input type="text" placeholder="Project ID" value={projectId} readOnly className="cursor-not-allowed" />
-                            <Input type="text" placeholder="Chat ID" value={chatId} readOnly className="cursor-not-allowed" />
-                        </div>
-                        <Button onClick={disconnect} variant="destructive" disabled={connectionStatus !== 'Connected'}>Disconnect</Button>
-                    </CardContent>
-                </Card>
+                <div className="flex items-center justify-between shrink-0 bg-muted/50 border rounded-lg p-2">
+                    <div className="flex items-center gap-2">
+                        <span className={`h-3 w-3 rounded-full ${connectionStatus === 'Connected' ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                        <p className="font-mono text-sm">{connectionStatus === 'Connected' ? `Connected to ${projectId}/${chatId}` : 'Disconnected'}</p>
+                    </div>
+                    <Button onClick={disconnect} variant="destructive" size="sm" disabled={connectionStatus !== 'Connected'}>Disconnect</Button>
+                </div>
                 
                 <Card className="flex-1 flex flex-col overflow-hidden">
                     <CardHeader className="flex flex-row items-center justify-between">
