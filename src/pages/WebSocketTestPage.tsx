@@ -7,6 +7,10 @@ import { useProjectContext } from '@/context/ProjectContext';
 import { useChatContext } from '@/context/ChatContext';
 import { WebSocketConnection, WebSocketEvent } from '@/api/chat_ws';
 import { createChat as apiCreateChat } from '@/api/chat';
+import LogDisplay from '@/components/chat/LogDisplay';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const SettingsDialog = lazy(() => import('@/components/chat/SettingsDialog'));
 const ProfileDialog = lazy(() => import('@/components/user/ProfileDialog'));
@@ -57,6 +61,15 @@ const WebSocketTestPage = () => {
     }
   }, [activeChat]);
 
+  // Auto-connect when chat/project changes
+  useEffect(() => {
+    if (chatId && projectId) {
+      connect();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatId, projectId]);
+
+
   const addLog = (text: string) => {
     console.log(text);
     setLog(prev => [...prev, text]);
@@ -98,7 +111,7 @@ const WebSocketTestPage = () => {
         model: user?.preferred_model,
         onOpen: () => {
             setConnectionStatus('Connected');
-            addLog('--- Connection Opened and Authenticated ---');
+            addLog(`--- Connection Opened and Authenticated to ${projectId}/${chatId} ---`);
         },
         onClose: (code: number, reason: string) => {
             setConnectionStatus(`Disconnected: ${reason} (Code: ${code})`);
@@ -173,51 +186,68 @@ const WebSocketTestPage = () => {
             <main className="flex-1 overflow-y-auto p-4">
                 <div className="container mx-auto">
                     <h1 className="text-2xl font-bold mb-4">WebSocket Test Page</h1>
-                    <div className="bg-gray-800 p-4 rounded-lg mb-4">
-                        <p className="font-mono">Status: <span className={connectionStatus === 'Connected' ? 'text-green-500' : 'text-red-500'}>{connectionStatus}</span></p>
-                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <input
-                        type="text"
-                        placeholder="Project ID (auto-filled from current project)"
-                        value={projectId}
-                        readOnly
-                        className="p-2 rounded bg-gray-600 text-white cursor-not-allowed"
-                        />
-                        <input
-                        type="text"
-                        placeholder="Chat ID (auto-filled from current chat)"
-                        value={chatId}
-                        readOnly
-                        className="p-2 rounded bg-gray-600 text-white cursor-not-allowed"
-                        />
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Connection</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="font-mono text-sm">Status: <span className={connectionStatus === 'Connected' ? 'text-green-500' : 'text-red-500'}>{connectionStatus}</span>
+                                {connectionStatus === 'Connected' && <span>{` to ${projectId}/${chatId}`}</span>}
+                                </p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
+                                    <Input
+                                        type="text"
+                                        placeholder="Project ID"
+                                        value={projectId}
+                                        readOnly
+                                        className="cursor-not-allowed"
+                                    />
+                                    <Input
+                                        type="text"
+                                        placeholder="Chat ID"
+                                        value={chatId}
+                                        readOnly
+                                        className="cursor-not-allowed"
+                                    />
+                                </div>
+                                <div className="flex gap-4">
+                                    <Button onClick={disconnect} variant="destructive" disabled={connectionStatus !== 'Connected'}>
+                                    Disconnect
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                         <Card>
+                            <CardHeader>
+                                <CardTitle>Send Message</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex gap-4">
+                                    <Input
+                                        type="text"
+                                        placeholder="Message"
+                                        value={message}
+                                        onChange={(e) => setMessage(e.target.value)}
+                                        onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                                        className="flex-grow"
+                                    />
+                                    <Button onClick={sendMessage} variant="secondary" disabled={connectionStatus !== 'Connected'}>
+                                    Send
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
                     </div>
-                    <div className="flex gap-4 mb-4">
-                        <button onClick={connect} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" disabled={!chatId || !projectId || connectionStatus === 'Connected'}>
-                        Connect
-                        </button>
-                        <button onClick={disconnect} className="bg-red-500 hover:red-700 text-white font-bold py-2 px-4 rounded" disabled={connectionStatus !== 'Connected'}>
-                        Disconnect
-                        </button>
-                    </div>
-                    <div className="flex gap-4 mb-4">
-                        <input
-                        type="text"
-                        placeholder="Message"
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                        className="flex-grow p-2 rounded bg-gray-700 text-white"
-                        />
-                        <button onClick={sendMessage} className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded" disabled={connectionStatus !== 'Connected'}>
-                        Send
-                        </button>
-                    </div>
-                    <div className="bg-black p-4 rounded-lg h-96 overflow-y-auto">
-                        <pre className="text-sm font-mono text-white">{
-                        log.map((line, index) => <p key={index}>{line}</p>)
-                        }</pre>
-                    </div>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Logs</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <LogDisplay log={log} />
+                        </CardContent>
+                    </Card>
                 </div>
             </main>
             <Suspense fallback={loadingComponent}>
