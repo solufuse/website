@@ -11,6 +11,8 @@ import LogDisplay from '@/components/chat/LogDisplay';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Toaster } from "@/components/ui/sonner";
+import { toast } from "sonner";
 
 const SettingsDialog = lazy(() => import('@/components/chat/SettingsDialog'));
 const ProfileDialog = lazy(() => import('@/components/user/ProfileDialog'));
@@ -61,14 +63,12 @@ const WebSocketTestPage = () => {
     }
   }, [activeChat]);
 
-  // Auto-connect when chat/project changes
   useEffect(() => {
     if (chatId && projectId) {
       connect();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatId, projectId]);
-
 
   const addLog = (text: string) => {
     console.log(text);
@@ -94,15 +94,9 @@ const WebSocketTestPage = () => {
   };
 
   const connect = () => {
-    if (!chatId || !projectId) {
-      addLog('--- Project ID and Chat ID are required ---');
-      return;
-    }
-    
-    if (wsConnection.current) {
-      wsConnection.current.closeConnection();
-    }
+    if (!chatId || !projectId) return;
 
+    wsConnection.current?.closeConnection();
     addLog(`--- Attempting to connect (Project: ${projectId}, Chat: ${chatId}) ---`);
     
     const options = {
@@ -131,9 +125,7 @@ const WebSocketTestPage = () => {
   };
 
   const disconnect = () => {
-    if (wsConnection.current) {
-      wsConnection.current.closeConnection();
-    }
+    wsConnection.current?.closeConnection();
   };
 
   const sendMessage = () => {
@@ -146,21 +138,26 @@ const WebSocketTestPage = () => {
     }
   };
 
+  const copyLogsToClipboard = () => {
+    if (log.length === 0) {
+        toast("No logs to copy.");
+        return;
+    }
+    const logString = log.join('\n');
+    navigator.clipboard.writeText(logString).then(() => {
+        toast("Logs copied to clipboard!");
+    }, (err: any) => {
+        toast.error("Failed to copy logs", { description: err.message });
+    });
+  };
+
   useEffect(() => {
-    return () => {
-      if (wsConnection.current) {
-        wsConnection.current.closeConnection();
-      }
-    };
+    return () => wsConnection.current?.closeConnection();
   }, []);
 
   const loadingComponent = <div className="loading-overlay">Loading...</div>;
   
-  const conversationsForSidebar: Conversation[] = chats.map(chat => ({
-      id: chat.short_id,
-      name: chat.title,
-      owner: chat.user_id,
-  }));
+  const conversationsForSidebar: Conversation[] = chats.map(chat => ({ id: chat.short_id, name: chat.title, owner: chat.user_id }));
 
   return (
     <div className="flex h-screen bg-background text-foreground">
@@ -169,12 +166,13 @@ const WebSocketTestPage = () => {
             activeConversationId={activeChatId}
             isCreatingChat={isCreating}
             onNewConversation={handleNewConversation}
-            onConversationSelect={(id: string) => setActiveChatId(id)}
+            onConversationSelect={setActiveChatId}
             onDeleteConversation={deleteChat}
             isSidebarOpen={true}
             onToggleSidebar={() => {}}
         />
         <div className="flex flex-1 flex-col overflow-hidden">
+            <Toaster />
             <Header
                 user={user}
                 onToggleSettings={() => setIsSettingsOpen(true)}
@@ -183,83 +181,50 @@ const WebSocketTestPage = () => {
                 onLogout={logout}
                 currentProject={currentProject}
             />
-            <main className="flex-1 overflow-y-auto p-4">
-                <div className="container mx-auto">
-                    <h1 className="text-2xl font-bold mb-4">WebSocket Test Page</h1>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Connection</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="font-mono text-sm">Status: <span className={connectionStatus === 'Connected' ? 'text-green-500' : 'text-red-500'}>{connectionStatus}</span>
-                                {connectionStatus === 'Connected' && <span>{` to ${projectId}/${chatId}`}</span>}
-                                </p>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
-                                    <Input
-                                        type="text"
-                                        placeholder="Project ID"
-                                        value={projectId}
-                                        readOnly
-                                        className="cursor-not-allowed"
-                                    />
-                                    <Input
-                                        type="text"
-                                        placeholder="Chat ID"
-                                        value={chatId}
-                                        readOnly
-                                        className="cursor-not-allowed"
-                                    />
-                                </div>
-                                <div className="flex gap-4">
-                                    <Button onClick={disconnect} variant="destructive" disabled={connectionStatus !== 'Connected'}>
-                                    Disconnect
-                                    </Button>
-                                </div>
-                            </CardContent>
-                        </Card>
-                         <Card>
-                            <CardHeader>
-                                <CardTitle>Send Message</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="flex gap-4">
-                                    <Input
-                                        type="text"
-                                        placeholder="Message"
-                                        value={message}
-                                        onChange={(e) => setMessage(e.target.value)}
-                                        onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                                        className="flex-grow"
-                                    />
-                                    <Button onClick={sendMessage} variant="secondary" disabled={connectionStatus !== 'Connected'}>
-                                    Send
-                                    </Button>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
+            <main className="flex-1 flex flex-col p-4 gap-4 overflow-hidden">
+                <h1 className="text-2xl font-bold shrink-0">WebSocket Test Page</h1>
+                
+                <Card className="shrink-0">
+                    <CardHeader>
+                        <CardTitle>Connection</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="font-mono text-sm">Status: <span className={connectionStatus === 'Connected' ? 'text-green-500' : 'text-red-500'}>{connectionStatus}</span>
+                        {connectionStatus === 'Connected' && <span>{` to ${projectId}/${chatId}`}</span>}
+                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
+                            <Input type="text" placeholder="Project ID" value={projectId} readOnly className="cursor-not-allowed" />
+                            <Input type="text" placeholder="Chat ID" value={chatId} readOnly className="cursor-not-allowed" />
+                        </div>
+                        <Button onClick={disconnect} variant="destructive" disabled={connectionStatus !== 'Connected'}>Disconnect</Button>
+                    </CardContent>
+                </Card>
+                
+                <Card className="flex-1 flex flex-col overflow-hidden">
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <CardTitle>Logs</CardTitle>
+                        <Button onClick={copyLogsToClipboard} variant="outline">Copy Logs</Button>
+                    </CardHeader>
+                    <CardContent className="flex-1 overflow-y-auto bg-black rounded-b-lg p-4">
+                        <LogDisplay log={log} />
+                    </CardContent>
+                </Card>
 
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Logs</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <LogDisplay log={log} />
-                        </CardContent>
-                    </Card>
+                <div className="flex gap-4 shrink-0">
+                    <Input
+                        type="text"
+                        placeholder="Message"
+                        value={message}
+                        onChange={(e) => setMessage(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                        className="flex-grow"
+                    />
+                    <Button onClick={sendMessage} variant="secondary" disabled={connectionStatus !== 'Connected'}>Send</Button>
                 </div>
             </main>
             <Suspense fallback={loadingComponent}>
                 {isSettingsOpen && <SettingsDialog isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />}
-                {user && isProfileOpen && (
-                    <ProfileDialog
-                        isOpen={isProfileOpen}
-                        onClose={() => setIsProfileOpen(false)}
-                        onSave={updateUsername}
-                        currentUsername={user.username}
-                    />
-                )}
+                {user && isProfileOpen && <ProfileDialog isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} onSave={updateUsername} currentUsername={user.username} />}
             </Suspense>
         </div>
     </div>
