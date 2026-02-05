@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FileText, FolderOpen } from 'lucide-react';
+import { FileText, FolderOpen, Trash2, Plug, PlugZap } from 'lucide-react';
 import FileExplorer from '@/components/layout/FileExplorer';
 
 const SettingsDialog = lazy(() => import('@/components/chat/SettingsDialog'));
@@ -34,6 +34,7 @@ const WebSocketTestPage = () => {
   const [connectionStatus, setConnectionStatus] = useState('Disconnected');
   const wsConnection = useRef<WebSocketConnection | null>(null);
   const [isFileExplorerOpen, setIsFileExplorerOpen] = useState(false);
+  const [isAutoConnectEnabled, setIsAutoConnectEnabled] = useState(true);
 
   const { user, loginWithGoogle, logout, updateUsername } = useAuthContext();
   const { currentProject } = useProjectContext();
@@ -62,21 +63,20 @@ const WebSocketTestPage = () => {
   useEffect(() => {
     if (activeChat) {
       setChatId(activeChat.short_id);
+      setIsAutoConnectEnabled(true); // Re-enable auto-connect on chat change
     } else {
       setChatId('');
     }
   }, [activeChat]);
 
-  useEffect(() => {
-    if (chatId && projectId) {
-      connect();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chatId, projectId]);
-
   const addLog = (text: string) => {
     console.log(text);
     setLog(prev => [...prev, text]);
+  };
+
+  const clearLog = () => {
+    setLog([]);
+    toast("Logs cleared.");
   };
 
   const handleNewConversation = async () => {
@@ -98,7 +98,10 @@ const WebSocketTestPage = () => {
   };
 
   const connect = () => {
-    if (!chatId || !projectId) return;
+    if (!chatId || !projectId) {
+        addLog('Project and Chat ID must be set to connect.');
+        return;
+    }
 
     wsConnection.current?.closeConnection();
     addLog(`--- Attempting to connect (Project: ${projectId}, Chat: ${chatId}) ---`);
@@ -128,8 +131,21 @@ const WebSocketTestPage = () => {
     wsConnection.current.connect();
   };
 
-  const disconnect = () => {
-    wsConnection.current?.closeConnection();
+  useEffect(() => {
+    if (chatId && projectId && isAutoConnectEnabled) {
+        connect();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatId, projectId, isAutoConnectEnabled]);
+
+
+  const handleToggleConnection = () => {
+    if (connectionStatus === 'Connected') {
+        setIsAutoConnectEnabled(false);
+        wsConnection.current?.closeConnection();
+    } else {
+        setIsAutoConnectEnabled(true);
+    }
   };
 
   const sendMessage = () => {
@@ -193,15 +209,25 @@ const WebSocketTestPage = () => {
                                 <FileText className="h-5 w-5" />
                                 <CardTitle className="text-base">Logs</CardTitle>
                                 <span className={`h-2 w-2 rounded-full ${connectionStatus === 'Connected' ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                                <p className="font-mono text-xs text-muted-foreground truncate max-w-xs">{connectionStatus === 'Connected' ? `Connected to ${projectId}/${chatId}` : 'Disconnected'}</p>
+                                <p className="font-mono text-xs text-muted-foreground">{connectionStatus === 'Connected' ? `Connected to ${projectId}/${chatId}` : 'Disconnected'}</p>
                             </div>
                             <div className="flex items-center gap-2">
+                                <Button onClick={clearLog} variant="outline" size="sm">
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Clear
+                                </Button>
+                                <Button onClick={copyLogsToClipboard} variant="outline" size="sm">Copy</Button>
                                 <Button onClick={() => setIsFileExplorerOpen(!isFileExplorerOpen)} variant="outline" size="sm">
                                     <FolderOpen className="h-4 w-4 mr-2" />
-                                    {isFileExplorerOpen ? 'Close Explorer' : 'Open Explorer'}
+                                    Files
                                 </Button>
-                                <Button onClick={copyLogsToClipboard} variant="outline" size="sm">Copy Logs</Button>
-                                <Button onClick={disconnect} variant="destructive" size="sm" disabled={connectionStatus !== 'Connected'}>Disconnect</Button>
+                                <Button onClick={handleToggleConnection} variant={connectionStatus === 'Connected' ? 'destructive' : 'outline'} size="sm">
+                                    {connectionStatus === 'Connected' ? (
+                                        <><PlugZap className="h-4 w-4 mr-2" />Disconnect</>
+                                    ) : (
+                                        <><Plug className="h-4 w-4 mr-2" />Connect</>
+                                    )}
+                                </Button>
                             </div>
                         </CardHeader>
                         <ScrollArea className="flex-1">
