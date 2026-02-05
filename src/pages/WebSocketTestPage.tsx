@@ -231,7 +231,7 @@ const WebSocketTestPage = () => {
                             </div>
                         </CardHeader>
                         <ScrollArea className="flex-1">
-                            <CardContent className="bg-black p-4 h-full">
+                            <CardContent className="p-0 h-full">
                                 <LogDisplay log={log} />
                             </CardContent>
                         </ScrollArea>
