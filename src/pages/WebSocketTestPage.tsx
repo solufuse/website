@@ -13,6 +13,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { FileText, FolderOpen } from 'lucide-react';
+import FileExplorer from '@/components/layout/FileExplorer';
 
 const SettingsDialog = lazy(() => import('@/components/chat/SettingsDialog'));
 const ProfileDialog = lazy(() => import('@/components/user/ProfileDialog'));
@@ -30,6 +33,7 @@ const WebSocketTestPage = () => {
   const [log, setLog] = useState<string[]>([]);
   const [connectionStatus, setConnectionStatus] = useState('Disconnected');
   const wsConnection = useRef<WebSocketConnection | null>(null);
+  const [isFileExplorerOpen, setIsFileExplorerOpen] = useState(false);
 
   const { user, loginWithGoogle, logout, updateUsername } = useAuthContext();
   const { currentProject } = useProjectContext();
@@ -181,35 +185,58 @@ const WebSocketTestPage = () => {
                 onLogout={logout}
                 currentProject={currentProject}
             />
-            <main className="flex-1 flex flex-col p-4 gap-4 overflow-hidden">
-                <div className="flex items-center justify-between shrink-0 bg-muted/50 border rounded-lg p-2">
-                    <div className="flex items-center gap-2">
-                        <span className={`h-3 w-3 rounded-full ${connectionStatus === 'Connected' ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                        <p className="font-mono text-sm">{connectionStatus === 'Connected' ? `Connected to ${projectId}/${chatId}` : 'Disconnected'}</p>
+            <main className="flex-1 flex p-4 gap-4 overflow-hidden">
+                {isFileExplorerOpen && (
+                    <div className="w-1/3 min-w-[300px]">
+                        <FileExplorer
+                            isOpen={isFileExplorerOpen}
+                            onClose={() => setIsFileExplorerOpen(false)}
+                            projectId={projectId}
+                            currentProject={currentProject}
+                            className="h-full"
+                            refreshTrigger={0}
+                        />
                     </div>
-                    <Button onClick={disconnect} variant="destructive" size="sm" disabled={connectionStatus !== 'Connected'}>Disconnect</Button>
-                </div>
-                
-                <Card className="flex-1 flex flex-col overflow-hidden">
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <CardTitle>Logs</CardTitle>
-                        <Button onClick={copyLogsToClipboard} variant="outline">Copy Logs</Button>
-                    </CardHeader>
-                    <CardContent className="flex-1 overflow-y-auto bg-black rounded-b-lg p-4">
-                        <LogDisplay log={log} />
-                    </CardContent>
-                </Card>
-
-                <div className="flex gap-4 shrink-0">
-                    <Input
-                        type="text"
-                        placeholder="Message"
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                        className="flex-grow"
-                    />
-                    <Button onClick={sendMessage} variant="secondary" disabled={connectionStatus !== 'Connected'}>Send</Button>
+                )}
+                <div className="flex-1 flex flex-col gap-4">
+                    <div className="flex items-center justify-between shrink-0">
+                        <div className="flex items-center gap-2">
+                            <span className={`h-3 w-3 rounded-full ${connectionStatus === 'Connected' ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                            <p className="font-mono text-sm">{connectionStatus === 'Connected' ? `Connected to ${projectId}/${chatId}` : 'Disconnected'}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Button onClick={() => setIsFileExplorerOpen(!isFileExplorerOpen)} variant="outline" size="sm">
+                                <FolderOpen className="h-4 w-4 mr-2" />
+                                {isFileExplorerOpen ? 'Close Explorer' : 'Open Explorer'}
+                            </Button>
+                            <Button onClick={disconnect} variant="destructive" size="sm" disabled={connectionStatus !== 'Connected'}>Disconnect</Button>
+                        </div>
+                    </div>
+                    <Card className="flex-1 flex flex-col overflow-hidden">
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <FileText className="h-5 w-5" />
+                                <CardTitle>Logs</CardTitle>
+                            </div>
+                            <Button onClick={copyLogsToClipboard} variant="outline">Copy Logs</Button>
+                        </CardHeader>
+                        <ScrollArea className="flex-1">
+                            <CardContent className="bg-black p-4 h-full">
+                                <LogDisplay log={log} />
+                            </CardContent>
+                        </ScrollArea>
+                    </Card>
+                    <div className="flex gap-4 shrink-0">
+                        <Input
+                            type="text"
+                            placeholder="Message"
+                            value={message}
+                            onChange={(e) => setMessage(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                            className="flex-grow"
+                        />
+                        <Button onClick={sendMessage} variant="secondary" disabled={connectionStatus !== 'Connected'}>Send</Button>
+                    </div>
                 </div>
             </main>
             <Suspense fallback={loadingComponent}>
