@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Bot, Terminal, ChevronDown, FolderOpen, Upload, Plus, X, Clipboard, Link } from 'lucide-react';
+import { Send, Bot, Terminal, ChevronDown, FolderOpen, Upload, Plus, X, Clipboard, Link, ChevronsUpDown } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { useAuthContext } from '@/context/authcontext';
@@ -14,6 +14,7 @@ import { useChatWSContext } from '@/context/ChatWSContext';
 import { uploadFiles } from '@/api/files';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { Message } from '@/types/types_chat';
 import type { ProjectMember } from '@/types/types_projects';
 
@@ -68,6 +69,10 @@ const ChatPage: React.FC = () => {
         }));
     }, [chats, currentProject]);
 
+    const sortedMessages = useMemo(() => {
+        return [...messages].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    }, [messages]);
+
     const scrollToBottom = (behavior: 'smooth' | 'auto' = 'smooth') => {
         messagesEndRef.current?.scrollIntoView({ behavior });
     };
@@ -106,7 +111,7 @@ const ChatPage: React.FC = () => {
         if (isStreaming || !userScrolledUp) {
             scrollToBottom('auto');
         }
-    }, [messages, isStreaming, userScrolledUp]);
+    }, [sortedMessages, isStreaming, userScrolledUp]);
     
     useEffect(() => {
         const scrollViewport = scrollAreaRef.current?.querySelector('div[data-radix-scroll-area-viewport]');
@@ -134,7 +139,7 @@ const ChatPage: React.FC = () => {
                 handleScrollToMessage(messageId);
             }
         }, 100);
-    }, [messageId, messages]);
+    }, [messageId, sortedMessages]);
     
     const handleSend = async () => {
         if (!input.trim()) return;
@@ -214,7 +219,7 @@ const ChatPage: React.FC = () => {
                                                         </Button>
                                                     </div>
                                                 )}
-                                                {messages.map((message) => {
+                                                {sortedMessages.map((message) => {
                                                     const isOwnMessage = message.role === 'user' && user?.uid === message.user_id;
                                                     const shareId = message.commit_hash || message.id;
                                                     const toolCode = message.tool_code ? `\`\`\`python\n${message.tool_code}\n\`\`\`` : '';
@@ -235,30 +240,48 @@ const ChatPage: React.FC = () => {
                                                                             </Suspense>
                                                                         )}
                                                                         {message.tool_code && (
-                                                                            <div className="mt-4 bg-slate-950 rounded-lg">
-                                                                                <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800">
-                                                                                    <div className="flex items-center gap-2">
-                                                                                        <Terminal className="h-4 w-4" />
-                                                                                        <span className="text-xs font-semibold">Tool Code</span>
+                                                                            <Collapsible className="mt-4 bg-slate-950 rounded-lg">
+                                                                                <CollapsibleTrigger asChild>
+                                                                                    <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800 cursor-pointer">
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            <Terminal className="h-4 w-4" />
+                                                                                            <span className="text-xs font-semibold">Tool Code</span>
+                                                                                        </div>
+                                                                                        <Button variant="ghost" size="icon" className="h-6 w-6">
+                                                                                            <ChevronsUpDown className="h-4 w-4" />
+                                                                                        </Button>
                                                                                     </div>
-                                                                                </div>
-                                                                                <Suspense fallback={loadingComponent}>
-                                                                                    <MarkdownRenderer content={toolCode} />
-                                                                                </Suspense>
-                                                                            </div>
+                                                                                </CollapsibleTrigger>
+                                                                                <CollapsibleContent>
+                                                                                    <Suspense fallback={loadingComponent}>
+                                                                                        <div className="code-block p-4">
+                                                                                            <MarkdownRenderer content={toolCode} />
+                                                                                        </div>
+                                                                                    </Suspense>
+                                                                                </CollapsibleContent>
+                                                                            </Collapsible>
                                                                         )}
                                                                         {message.tool_output && (
-                                                                            <div className="mt-4 bg-slate-950 rounded-lg">
-                                                                                <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800">
-                                                                                    <div className="flex items-center gap-2">
-                                                                                        <Bot className="h-4 w-4" />
-                                                                                        <span className="text-xs font-semibold">Tool Output</span>
+                                                                            <Collapsible className="mt-4 bg-slate-950 rounded-lg">
+                                                                                <CollapsibleTrigger asChild>
+                                                                                    <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800 cursor-pointer">
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            <Bot className="h-4 w-4" />
+                                                                                            <span className="text-xs font-semibold">Tool Output</span>
+                                                                                        </div>
+                                                                                        <Button variant="ghost" size="icon" className="h-6 w-6">
+                                                                                            <ChevronsUpDown className="h-4 w-4" />
+                                                                                        </Button>
                                                                                     </div>
-                                                                                </div>
-                                                                                <Suspense fallback={loadingComponent}>
-                                                                                    <MarkdownRenderer content={toolOutput} />
-                                                                                </Suspense>
-                                                                            </div>
+                                                                                </CollapsibleTrigger>
+                                                                                <CollapsibleContent>
+                                                                                    <Suspense fallback={loadingComponent}>
+                                                                                        <div className="code-block p-4">
+                                                                                            <MarkdownRenderer content={toolOutput} />
+                                                                                        </div>
+                                                                                    </Suspense>
+                                                                                </CollapsibleContent>
+                                                                            </Collapsible>
                                                                         )}
                                                                     </div>
                                                                 </div>

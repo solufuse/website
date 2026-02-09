@@ -157,3 +157,7 @@ tbody tr:nth-child(even) {
     z-index: 50;
     color: white;
 }
+
+.code-block {
+    @apply whitespace-pre-wrap break-words overflow-x-auto;
+}
