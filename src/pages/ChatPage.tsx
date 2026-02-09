@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Send, Bot, Terminal, ChevronDown, FolderOpen, Upload, Plus, X, Clipboard, Link } from 'lucide-react';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { useAuthContext } from '@/context/authcontext';
@@ -233,16 +232,31 @@ const ChatPage: React.FC = () => {
                                                                                 <MarkdownRenderer content={message.content || ''} />
                                                                             </Suspense>
                                                                         )}
-                                                                        {(message.tool_code || message.tool_output) && (
-                                                                            <Accordion type="single" collapsible className="w-full mt-2">
-                                                                                <AccordionItem value="item-1">
-                                                                                    <AccordionTrigger className="text-xs py-2"><div className="flex items-center gap-2"><Terminal className="h-4 w-4" /><span>Execution Details</span></div></AccordionTrigger>
-                                                                                    <AccordionContent className="text-xs bg-black p-2 rounded-md font-mono mt-2">
-                                                                                        {message.tool_code && <pre className="whitespace-pre-wrap"><code>{message.tool_code}</code></pre>}
-                                                                                        {message.tool_output && <pre className="mt-2 whitespace-pre-wrap text-gray-400"><code>{message.tool_output}</code></pre>}
-                                                                                    </AccordionContent>
-                                                                                </AccordionItem>
-                                                                            </Accordion>
+                                                                        {message.tool_code && (
+                                                                            <div className="mt-4 bg-slate-950 rounded-lg">
+                                                                                <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800">
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        <Terminal className="h-4 w-4" />
+                                                                                        <span className="text-xs font-semibold">Tool Code</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div className="p-4 text-xs font-mono">
+                                                                                    <pre className="whitespace-pre-wrap"><code>{message.tool_code}</code></pre>
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+                                                                        {message.tool_output && (
+                                                                            <div className="mt-4 bg-slate-950 rounded-lg">
+                                                                                <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800">
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        <Bot className="h-4 w-4" />
+                                                                                        <span className="text-xs font-semibold">Tool Output</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div className="p-4 text-xs font-mono text-slate-400">
+                                                                                    <pre className="whitespace-pre-wrap"><code>{message.tool_output}</code></pre>
+                                                                                </div>
+                                                                            </div>
                                                                         )}
                                                                     </div>
                                                                 </div>
