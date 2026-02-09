@@ -217,6 +217,8 @@ const ChatPage: React.FC = () => {
                                                 {messages.map((message) => {
                                                     const isOwnMessage = message.role === 'user' && user?.uid === message.user_id;
                                                     const shareId = message.commit_hash || message.id;
+                                                    const toolCode = message.tool_code ? `\`\`\`python\n${message.tool_code}\n\`\`\`` : '';
+                                                    const toolOutput = message.tool_output ? `\`\`\`json\n${message.tool_output}\n\`\`\`` : '';
 
                                                     return (
                                                         <div key={message.id} ref={el => { if (el) messageRefs.current.set(shareId, el); else messageRefs.current.delete(shareId); }}>
@@ -240,9 +242,9 @@ const ChatPage: React.FC = () => {
                                                                                         <span className="text-xs font-semibold">Tool Code</span>
                                                                                     </div>
                                                                                 </div>
-                                                                                <div className="p-4 text-xs font-mono">
-                                                                                    <pre className="whitespace-pre-wrap"><code>{message.tool_code}</code></pre>
-                                                                                </div>
+                                                                                <Suspense fallback={loadingComponent}>
+                                                                                    <MarkdownRenderer content={toolCode} />
+                                                                                </Suspense>
                                                                             </div>
                                                                         )}
                                                                         {message.tool_output && (
@@ -253,9 +255,9 @@ const ChatPage: React.FC = () => {
                                                                                         <span className="text-xs font-semibold">Tool Output</span>
                                                                                     </div>
                                                                                 </div>
-                                                                                <div className="p-4 text-xs font-mono text-slate-400">
-                                                                                    <pre className="whitespace-pre-wrap"><code>{message.tool_output}</code></pre>
-                                                                                </div>
+                                                                                <Suspense fallback={loadingComponent}>
+                                                                                    <MarkdownRenderer content={toolOutput} />
+                                                                                </Suspense>
                                                                             </div>
                                                                         )}
                                                                     </div>
