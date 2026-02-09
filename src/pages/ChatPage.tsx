@@ -69,8 +69,16 @@ const ChatPage: React.FC = () => {
         }));
     }, [chats, currentProject]);
 
-    const sortedMessages = useMemo(() => {
-        return [...messages].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    const processedMessages = useMemo(() => {
+        const sorted = [...messages].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+        return sorted.flatMap(msg => {
+            if (msg.role === 'assistant' && msg.tool_code && msg.content) {
+                const toolMessage: Message = { ...msg, content: '', id: `${msg.id}-tool` };
+                const contentMessage: Message = { ...msg, tool_code: '', tool_output: '', id: `${msg.id}-content` };
+                return [toolMessage, contentMessage];
+            }
+            return [msg];
+        });
     }, [messages]);
 
     const scrollToBottom = (behavior: 'smooth' | 'auto' = 'smooth') => {
@@ -111,7 +119,7 @@ const ChatPage: React.FC = () => {
         if (isStreaming || !userScrolledUp) {
             scrollToBottom('auto');
         }
-    }, [sortedMessages, isStreaming, userScrolledUp]);
+    }, [processedMessages, isStreaming, userScrolledUp]);
     
     useEffect(() => {
         const scrollViewport = scrollAreaRef.current?.querySelector('div[data-radix-scroll-area-viewport]');
@@ -139,7 +147,7 @@ const ChatPage: React.FC = () => {
                 handleScrollToMessage(messageId);
             }
         }, 100);
-    }, [messageId, sortedMessages]);
+    }, [messageId, processedMessages]);
     
     const handleSend = async () => {
         if (!input.trim()) return;
@@ -219,7 +227,7 @@ const ChatPage: React.FC = () => {
                                                         </Button>
                                                     </div>
                                                 )}
-                                                {sortedMessages.map((message) => {
+                                                {processedMessages.map((message) => {
                                                     const isOwnMessage = message.role === 'user' && user?.uid === message.user_id;
                                                     const shareId = message.commit_hash || message.id;
                                                     const toolCode = message.tool_code ? `\`\`\`python\n${message.tool_code}\n\`\`\`` : '';
