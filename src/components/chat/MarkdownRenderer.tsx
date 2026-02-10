@@ -14,7 +14,10 @@ interface MarkdownRendererProps {
 
 const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
   return (
-    <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex, rehypeHighlight]}>
+    <ReactMarkdown 
+      remarkPlugins={[remarkMath, remarkGfm]} 
+      rehypePlugins={[[rehypeKatex, { strict: false }], rehypeHighlight]}
+    >
       {content}
     </ReactMarkdown>
   );
