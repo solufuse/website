@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { User, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
@@ -24,6 +25,7 @@ interface AuthContextType {
   updateUsername: (username: string) => Promise<void>;
   updatePreferredModel: (model: string) => Promise<void>; // ADDED: New function for model preference
   refreshUser: () => Promise<void>; // New function to refresh user data
+  preferredModel?: string; // ADDED: The user's preferred model
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -66,6 +68,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AuthenticatedUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [preferredModel, setPreferredModel] = useState<string | undefined>(undefined);
 
   const loginWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
@@ -112,6 +115,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             photoURL: userProfile.photoURL || firebaseUser.photoURL,
         };
         setUser(authenticatedUser);
+        setPreferredModel(authenticatedUser.preferred_model);
         console.log("User data refreshed.");
       }
     } catch (error) {
@@ -157,6 +161,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (!prevUser) return null;
           return { ...prevUser, preferred_model: updatedProfile.preferred_model };
       });
+      setPreferredModel(updatedProfile.preferred_model);
     } catch (error) {
       console.error("Failed to update preferred model", error);
       throw error;
@@ -200,6 +205,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
 
           setUser(authenticatedUser);
+          setPreferredModel(authenticatedUser.preferred_model);
         } catch (error) {
           console.error("Authentication process failed:", error);
           await auth.signOut();
@@ -210,6 +216,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(null);
         setToken(null);
         setLoading(false);
+        setPreferredModel(undefined);
       }
     });
 
@@ -217,7 +224,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, loginWithGoogle, logout, updateUsername, updatePreferredModel, refreshUser }}>
+    <AuthContext.Provider value={{ user, token, loading, loginWithGoogle, logout, updateUsername, updatePreferredModel, refreshUser, preferredModel }}>
       {children}
     </AuthContext.Provider>
   );

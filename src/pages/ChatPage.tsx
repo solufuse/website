@@ -27,7 +27,7 @@ const StatusIndicator: React.FC<{ status: string; error: string | null; isLoadin
     let bgColor = 'bg-gray-700';
     let text = `Status: ${status}`;
     if (error) { bgColor = 'bg-red-500'; text = `Error: ${error}`; }
-    else if (isLoading) { bgColor = 'bg-yellow-500'; text = "Loading History..."; }
+    else if (isLoading) { bgColor = 'bg-yellow-500'; text = "Connecting..."; }
     else {
         switch (status) {
             case 'Connected': return null;
@@ -42,7 +42,7 @@ const ChatPage: React.FC = () => {
     const { user, loading: authLoading, loginWithGoogle, logout, updateUsername } = useAuthContext();
     const { currentProject, setCurrentProjectById } = useProjectContext();
     const { chats, isCreatingChat, createChat, deleteChat, loadChats: loadChatsForSidebar, setActiveChatId: setActiveChatId_classic } = useChatContext();
-    const { messages, isStreaming, isLoading: isWsLoading, isLoadingMore, hasMoreHistory, connectionStatus, error: wsError, connect, disconnect, sendMessage: sendWsMessage, loadMoreHistory } = useChatWSContext();
+    const { messages, isStreaming, isLoading: isWsLoading, connectionStatus, error: wsError, connect, disconnect, sendMessage: sendWsMessage } = useChatWSContext();
     const { projectId, chatId, messageId } = useParams<{ projectId?: string; chatId?: string; messageId?: string; }>();
     const navigate = useNavigate();
     
@@ -70,8 +70,7 @@ const ChatPage: React.FC = () => {
     }, [chats, currentProject]);
 
     const processedMessages = useMemo(() => {
-        const sorted = [...messages].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-        return sorted.flatMap(msg => {
+        return messages.flatMap(msg => {
             if (msg.role === 'assistant' && msg.tool_code && msg.content) {
                 const toolMessage: Message = { ...msg, content: '', id: `${msg.id}-tool` };
                 const contentMessage: Message = { ...msg, tool_code: '', tool_output: '', id: `${msg.id}-content` };
@@ -98,10 +97,10 @@ const ChatPage: React.FC = () => {
 
     useEffect(() => {
         if (chatId && currentProject) {
-            connect(currentProject.id, chatId);
+            connect(currentProject.id, chatId, user?.preferred_model);
         }
         return () => { if (chatId && currentProject) disconnect(); };
-    }, [chatId, currentProject, connect, disconnect]);
+    }, [chatId, currentProject, user?.preferred_model, connect, disconnect]);
 
     useEffect(() => {
         if (projectId) {
@@ -220,13 +219,6 @@ const ChatPage: React.FC = () => {
                                             <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)]"><Bot size={72} /><p className="text-2xl mt-4">How can I help you today?</p><p className='mt-2'>Select a chat or start a new one.</p></div>
                                         ) : (
                                             <div className="space-y-6">
-                                                {hasMoreHistory && (
-                                                    <div className="text-center">
-                                                        <Button onClick={loadMoreHistory} disabled={isLoadingMore} variant="outline" size="sm">
-                                                            {isLoadingMore ? 'Loading...' : 'Load More Messages'}
-                                                        </Button>
-                                                    </div>
-                                                )}
                                                 {processedMessages.map((message) => {
                                                     const isOwnMessage = message.role === 'user' && user?.uid === message.user_id;
                                                     const shareId = message.commit_hash || message.id;
