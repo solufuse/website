@@ -7,7 +7,7 @@ import { visualizer } from 'rollup-plugin-visualizer';
 export default defineConfig({
   plugins: [
     react(),
-    visualizer({ open: false, filename: 'dist/stats.html' }) // Add the visualizer plugin
+    visualizer({ open: false, filename: 'dist/stats.html' })
   ],
   resolve: {
     alias: {
@@ -19,15 +19,13 @@ export default defineConfig({
       output: {
         manualChunks: (id) => {
           if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom')) {
-              return 'vendor_react';
-            }
             if (id.includes('firebase')) {
               return 'vendor_firebase';
             }
             if (id.includes('react-markdown') || id.includes('remark') || id.includes('rehype') || id.includes('katex') || id.includes('highlight.js')) {
               return 'vendor_markdown';
             }
+            // Group the rest of node_modules, including React, into a single vendor chunk.
             return 'vendor';
           }
         },
